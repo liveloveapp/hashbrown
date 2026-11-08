@@ -101,7 +101,7 @@ jobs:
           set -euo pipefail
           docker run --detach --rm --name hashbrown-postgres \
             -e POSTGRES_PASSWORD=fixture-only -p 5432:5432 postgres:18
-          for attempt in {1..30}; do
+          for _attempt in {1..30}; do
             if docker exec hashbrown-postgres pg_isready -U postgres; then
               exit 0
             fi
@@ -261,7 +261,7 @@ jobs:
           set -euo pipefail
           docker run --detach --rm --name hashbrown-postgres-cold \
             -e POSTGRES_PASSWORD=fixture-only -p 5432:5432 postgres:18
-          for attempt in {1..30}; do
+          for _attempt in {1..30}; do
             if docker exec hashbrown-postgres-cold pg_isready -U postgres; then
               exit 0
             fi
@@ -356,7 +356,7 @@ jobs:
           set -euo pipefail
           docker run --detach --rm --name hashbrown-postgres-source \
             -e POSTGRES_PASSWORD=fixture-only -p 5432:5432 postgres:18
-          for attempt in {1..30}; do
+          for _attempt in {1..30}; do
             if docker exec hashbrown-postgres-source pg_isready -U postgres; then
               exit 0
             fi

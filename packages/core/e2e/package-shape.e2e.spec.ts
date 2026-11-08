@@ -245,7 +245,7 @@ test('packed Core package includes every generated module and supports ESM and C
           const jsonStreamVersion =
             packageJson.dependencies?.['@cacheplane/json-stream'];
           if (
-            agUiCoreVersion !== '1.0.3' ||
+            agUiCoreVersion !== '1.0.4' ||
             agUiClientVersion !== agUiCoreVersion ||
             jsonStreamVersion !== '0.1.1' ||
             packageJson.dependencies?.['@cacheplane/partial-json'] !== undefined

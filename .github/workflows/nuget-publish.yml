@@ -61,7 +61,7 @@ jobs:
           set -euo pipefail
           docker run --detach --rm --name "$PG_CONTAINER" \
             -e POSTGRES_PASSWORD=fixture-only -p 5432:5432 postgres:18
-          for attempt in {1..30}; do
+          for _attempt in {1..30}; do
             if docker exec "$PG_CONTAINER" pg_isready -U postgres; then exit 0; fi
             sleep 1
           done
@@ -175,7 +175,7 @@ jobs:
           set -euo pipefail
           docker run --detach --rm --name "$PG_CONTAINER" \
             -e POSTGRES_PASSWORD=fixture-only -p 5432:5432 postgres:18
-          for attempt in {1..30}; do
+          for _attempt in {1..30}; do
             if docker exec "$PG_CONTAINER" pg_isready -U postgres; then exit 0; fi
             sleep 1
           done
