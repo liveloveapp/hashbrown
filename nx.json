@@ -22,6 +22,12 @@
       "{workspaceRoot}/LICENSE",
       {
         "runtime": "node --version"
+      },
+      {
+        "runtime": "node -p \"process.platform + '-' + process.arch\""
+      },
+      {
+        "env": "NODE_ENV"
       }
     ]
   },
