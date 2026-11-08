@@ -1,3 +1,4 @@
+import { readCandidateDependencyBaseline } from '../../../tools/conformance/dotnet/candidate-consumer/dependency-baseline.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -96,22 +97,8 @@ export async function verifyPrepared(pointer) {
       'Copied starter source differs: ' + filename,
     );
   }
-  const baseline = JSON.parse(
-    await fs.readFile(
-      path.join(
-        repository,
-        'tools/conformance/dotnet/live-consumer/package.json',
-      ),
-    ),
-  );
-  const baselineLock = JSON.parse(
-    await fs.readFile(
-      path.join(
-        repository,
-        'tools/conformance/dotnet/live-consumer/package-lock.json',
-      ),
-    ),
-  );
+  const { manifest: baseline, lock: baselineLock } =
+    await readCandidateDependencyBaseline();
   const manifest = JSON.parse(
     await fs.readFile(path.join(root, 'package.json')),
   );

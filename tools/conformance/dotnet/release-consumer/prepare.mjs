@@ -1,3 +1,4 @@
+import { readCandidateDependencyBaseline } from '../candidate-consumer/dependency-baseline.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -142,10 +143,8 @@ export async function preparePublicNpm(pointer, producerPath) {
   for (const file of ['empty.npmrc', 'empty-global.npmrc'])
     await fs.writeFile(path.join(root, file), '');
   const environment = candidateEnvironment(root);
-  const baseline = await read(path.join(here, '../live-consumer/package.json'));
-  const baselineLock = await read(
-    path.join(here, '../live-consumer/package-lock.json'),
-  );
+  const { manifest: baseline, lock: baselineLock } =
+    await readCandidateDependencyBaseline();
   const archives = {};
   for (const name of sdkNames) {
     const receipt = JSON.parse(

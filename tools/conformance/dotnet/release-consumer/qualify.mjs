@@ -1,3 +1,4 @@
+import { readCandidateDependencyBaseline } from '../candidate-consumer/dependency-baseline.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -193,10 +194,8 @@ export async function qualifyPublicNpm(pointerPath) {
   const installed = await json(
     path.join(root, 'node_modules/.package-lock.json'),
   );
-  const baseline = await json(path.join(here, '../live-consumer/package.json'));
-  const baselineLock = await json(
-    path.join(here, '../live-consumer/package-lock.json'),
-  );
+  const { manifest: baseline, lock: baselineLock } =
+    await readCandidateDependencyBaseline();
   const expectedManifest = {
     ...baseline,
     name: manifest.name,
