@@ -52,7 +52,7 @@
     "express": "^4.22.3",
     "front-matter": "^4.0.2",
     "hast-util-to-jsx-runtime": "2.3.6",
-    "hono": "4.13.13",
+    "hono": "4.13.16",
     "leaflet": "^1.9.4",
     "next": "16.4.2",
     "ollama": "0.6.4",
