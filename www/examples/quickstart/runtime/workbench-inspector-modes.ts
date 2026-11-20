@@ -68,8 +68,9 @@ export function workbenchStateTree(
 /**
  * Builds the modes a compact inspector tab can toggle between.
  *
- * The UI and JSON tabs of a generative lesson (format `ui`, without a recipe
- * override) always get Raw, Parsed and Resolved, whether or not the current
+ * The UI tab of a generative lesson (format `ui`, without a recipe override)
+ * gets Streaming (the partial value that has arrived) then Schema; its JSON tab
+ * gets Raw, Parsed and Resolved. The list holds whether or not the current
  * frame has streamed JSON yet; modes without data hold `undefined`.
  *
  * @param input - The tab, output format, frame and the sections it displays.
@@ -101,7 +102,14 @@ export function workbenchInspectorModes(input: {
   ];
 
   if (generative && tab === 'ui') {
-    return [{ id: 'schema', label: 'Schema', value: top.value }, ...streamed()];
+    return [
+      {
+        id: 'streaming',
+        label: 'Streaming',
+        value: parsePartialJson(json ?? ''),
+      },
+      { id: 'schema', label: 'Schema', value: top.value },
+    ];
   }
   if (generative && tab === 'json') return streamed();
   if (tab === 'state') {
@@ -130,7 +138,7 @@ export function defaultInspectorMode(
   tab: string,
   modes: readonly WorkbenchInspectorMode[],
 ): string {
-  const preferred = { ui: 'resolved', json: 'parsed', state: 'tree' }[
+  const preferred = { ui: 'streaming', json: 'parsed', state: 'tree' }[
     tab as 'ui' | 'json' | 'state'
   ];
   if (preferred && modes.some((mode) => mode.id === preferred)) {

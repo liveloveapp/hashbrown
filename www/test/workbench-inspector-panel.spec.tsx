@@ -104,10 +104,10 @@ test('shows one section with a mode toggle on the UI tab', () => {
   streamPlan(store);
 
   expect(host.querySelectorAll('.wb-inspector .wb-section')).toHaveLength(1);
-  expect(modeLabels(host)).toEqual(['Schema', 'Raw', 'Parsed', 'Resolved']);
+  expect(modeLabels(host)).toEqual(['Streaming', 'Schema']);
   expect(
     host.querySelector('[role=radio][aria-checked=true]')?.textContent,
-  ).toBe('Resolved');
+  ).toBe('Streaming');
   expect(host.querySelector('.wb-raw')).toBeNull();
   expect(host.querySelector('.wb-selection')).toBeNull();
   expect(
@@ -140,8 +140,8 @@ test('the UI and JSON modes stay the same before and after JSON streams', () => 
   expect(store.getSnapshot().frame?.json ?? '').toBe('');
   expect(prompt).toEqual(streamed);
   expect(streamed.ui).toEqual({
-    labels: ['Schema', 'Raw', 'Parsed', 'Resolved'],
-    checked: 'Resolved',
+    labels: ['Streaming', 'Schema'],
+    checked: 'Streaming',
   });
   expect(streamed.json).toEqual({
     labels: ['Raw', 'Parsed', 'Resolved'],
@@ -229,10 +229,11 @@ test('Raw shows the frame json and the choice survives a tab round trip', () => 
   streamPlan(store);
   const json = store.getSnapshot().frame?.json ?? '';
 
+  clickTab(host, 'JSON');
   chooseMode(host, 'Raw');
   const rawText = host.querySelector('.wb-inspection pre')?.textContent;
   clickTab(host, 'State');
-  clickTab(host, 'UI');
+  clickTab(host, 'JSON');
 
   expect(json).not.toBe('');
   expect(rawText).toBe(json);

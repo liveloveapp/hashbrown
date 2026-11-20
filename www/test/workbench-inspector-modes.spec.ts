@@ -43,28 +43,19 @@ test('does not throw on text that is not JSON', () => {
   expect(parse).not.toThrow();
 });
 
-test('offers four modes on the UI tab', () => {
-  const modes = workbenchInspectorModes({ tab: 'ui', frame, ...sections });
+test('a generative UI tab offers Streaming then Schema', () => {
+  const streaming = { json: '{"title":"Pl' } as unknown as WorkbenchFrame;
 
-  expect(modes.map((mode) => mode.id)).toEqual([
-    'schema',
-    'raw',
-    'parsed',
-    'resolved',
-  ]);
-  expect(modes.map((mode) => mode.label)).toEqual([
-    'Schema',
-    'Raw',
-    'Parsed',
-    'Resolved',
-  ]);
-  expect(modes.find((mode) => mode.id === 'schema')?.value).toBe('top-value');
-  expect(modes.find((mode) => mode.id === 'resolved')?.value).toEqual({
-    title: 'A',
+  const modes = workbenchInspectorModes({
+    tab: 'ui',
+    frame: streaming,
+    ...sections,
   });
-  expect(modes.find((mode) => mode.id === 'parsed')?.value).toEqual({
-    title: 'A',
-  });
+
+  expect(modes.map((mode) => mode.id)).toEqual(['streaming', 'schema']);
+  expect(modes.map((mode) => mode.label)).toEqual(['Streaming', 'Schema']);
+  expect(modes[0].value).toEqual({ title: 'Pl' });
+  expect(modes[1].value).toBe('top-value');
 });
 
 test('offers three modes on the JSON tab', () => {
@@ -123,12 +114,7 @@ test('keeps the generative modes stable before any JSON has streamed', () => {
     undefined,
     undefined,
   ]);
-  expect(empty.map((mode) => mode.id)).toEqual([
-    'schema',
-    'raw',
-    'parsed',
-    'resolved',
-  ]);
+  expect(empty.map((mode) => mode.id)).toEqual(['streaming', 'schema']);
 });
 
 test('keeps top, bottom and raw for formats that do not stream generative props', () => {
@@ -154,7 +140,7 @@ test('chooses a default mode per tab', () => {
     frame,
   });
 
-  expect(defaultInspectorMode('ui', ui)).toBe('resolved');
+  expect(defaultInspectorMode('ui', ui)).toBe('streaming');
   expect(defaultInspectorMode('json', json)).toBe('parsed');
   expect(defaultInspectorMode('state', state)).toBe('tree');
   expect(defaultInspectorMode('ui', other)).toBe('top');
