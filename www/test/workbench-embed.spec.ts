@@ -19,11 +19,12 @@ function fakeStorage() {
 
 function mountEmbedded(options: WorkbenchMountOptions) {
   const storage = fakeStorage();
+  const store = createWorkbenchStore();
   const host = document.createElement('div');
   document.body.append(host);
   mountWorkbench(
     host,
-    createWorkbenchStore(),
+    store,
     {
       framework: 'React',
       lesson: {
@@ -38,7 +39,7 @@ function mountEmbedded(options: WorkbenchMountOptions) {
     },
     { layout: createWorkbenchLayoutStore(storage), ...options },
   );
-  return { host, storage };
+  return { host, storage, store };
 }
 
 test('getWorkbenchEmbedMode accepts replay and live only', () => {
@@ -166,29 +167,7 @@ test('the prompt is named by a hidden label and a placeholder', () => {
 });
 
 test('Stop shows only while a run is going', () => {
-  const store = createWorkbenchStore();
-  const { host } = (() => {
-    const host = document.createElement('div');
-    document.body.append(host);
-    mountWorkbench(
-      host,
-      store,
-      {
-        framework: 'React',
-        lesson: {
-          id: 'tools',
-          title: 'Tools',
-          format: 'ui',
-          inspector: 'Requests',
-        },
-        send: vi.fn(),
-        stop: vi.fn(),
-        reset: vi.fn(),
-      },
-      { layout: createWorkbenchLayoutStore(fakeStorage()) },
-    );
-    return { host };
-  })();
+  const { host, store } = mountEmbedded({});
   const stop = () =>
     Array.from(host.querySelectorAll('button')).find(
       (item) => item.textContent === 'Stop',

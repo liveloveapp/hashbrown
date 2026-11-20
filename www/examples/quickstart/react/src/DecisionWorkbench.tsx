@@ -152,7 +152,6 @@ export function DecisionWorkbenchConversation({
         createPortal(
           <>
             <article className="wb-summary" aria-label="Application plan">
-              <span className="wb-muted">Application-owned plan</span>
               <h2>{workbenchDecisionPlan.title}</h2>
               <ol>
                 {workbenchDecisionPlan.steps.map((step) => (
@@ -171,9 +170,6 @@ export function DecisionWorkbenchConversation({
                   className="wb-summary"
                   aria-label="Decision result"
                 >
-                  <span className="wb-muted">
-                    Typed decision · application component
-                  </span>
                   <h2>{message.decision.nextAction}</h2>
                   <p>
                     Confidence: {Math.round(message.decision.confidence * 100)}%

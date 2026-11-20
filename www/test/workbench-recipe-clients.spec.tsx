@@ -178,7 +178,7 @@ test('selection offers manual choice before a request and never starts the SDK f
   await act(() => button(host, 'Show steps').click());
 
   expect(sdk.selection).not.toHaveBeenCalled();
-  expect(host.textContent).toContain('Application-owned plan');
+  expect(host.textContent).not.toContain('Application-owned plan');
   await act(() => root.unmount());
 });
 

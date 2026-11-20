@@ -182,9 +182,6 @@ export function WorkflowWorkbenchConversation({
               className="wb-summary wb-workflow-state"
               aria-label="Shared SDK state"
             >
-              <span className="wb-muted">
-                Application-owned plan · local form draft
-              </span>
               <ol>
                 {workbenchWorkflowPlan.steps.map((step) => (
                   <li key={step}>{step}</li>

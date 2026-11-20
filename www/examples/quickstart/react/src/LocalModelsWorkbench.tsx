@@ -48,7 +48,6 @@ function LocalPlanCard({
   const allowed = canAcceptWorkbenchLocalPlan(snapshot, origin, proposal, used);
   return (
     <article className="wb-summary" aria-label="Summary card">
-      <span className="wb-muted">Typed plan · application component</span>
       <h2>{proposal.title || 'Building your plan…'}</h2>
       <ol>
         {proposal.steps.map((step, index) => (
