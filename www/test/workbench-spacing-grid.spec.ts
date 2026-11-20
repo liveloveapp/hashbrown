@@ -71,3 +71,53 @@ test('the grid check flags off-grid values and allows the documented exceptions'
     '14: .c { width: 30px; }',
   ]);
 });
+
+/** Returns the body of the rule whose selector list is exactly `selector`. */
+function ruleBody(source: string, selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = new RegExp(
+    `(?:^|\\})\\s*${escaped}\\s*\\{([^}]*)\\}`,
+    'm',
+  ).exec(source);
+  return match?.[1] ?? '';
+}
+
+/** Returns the value of one declaration inside a rule body. */
+function declaration(body: string, name: string): string {
+  const match = new RegExp(`${name}\\s*:\\s*([^;]+);`).exec(body);
+  return match?.[1].trim() ?? '';
+}
+
+/** Returns the body of each listed selector's top-level rule. */
+function panelRules(source: string, selectors: string[]): string[] {
+  return selectors.map((selector) => ruleBody(source, selector));
+}
+
+test('panel spacing reads only the semantic tokens', () => {
+  const rules = panelRules(css, [
+    '.wb',
+    '.wb-panel-head',
+    '.wb-feed',
+    '.wb-composer',
+    '.wb-tabs',
+    '.wb-inspection',
+    '.wb-player',
+    '.wb-layout',
+  ]);
+
+  const literal = rules.filter((rule) =>
+    /(?<![-\w])(?:padding|gap)\s*:[^;]*var\(--wb-space-\d+\)/.test(rule),
+  );
+
+  expect(literal).toEqual([]);
+});
+
+test('the embed redefines the rhythm one step down', () => {
+  const embed = ruleBody(css, '.wb.wb-embed');
+
+  const values = ['--wb-gap', '--wb-pad', '--wb-stack'].map((name) =>
+    declaration(embed, name),
+  );
+
+  expect(values).toEqual(Array(3).fill('var(--wb-space-3)'));
+});

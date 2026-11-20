@@ -157,6 +157,13 @@ export async function measureWorkbenchAlignment(
       };
     const innerLeft = (panel: Element) =>
       rect(panel).left + px(panel, 'border-left-width');
+    // Panel regions inset by --wb-pad: 16px in the app, 12px in the embed.
+    const pad =
+      parseFloat(
+        getComputedStyle(chat.closest('.wb') ?? chat).getPropertyValue(
+          '--wb-pad',
+        ),
+      ) || 16;
     const contentLeft = (element: Element) =>
       rect(element).left +
       px(element, 'border-left-width') +
@@ -177,7 +184,7 @@ export async function measureWorkbenchAlignment(
     } else failures.push('missing chat head or inspector tabs');
 
     // 2. One inner left edge per panel.
-    const chatEdge = innerLeft(chat) + 16;
+    const chatEdge = innerLeft(chat) + pad;
     const chatEdges = [chatEdge];
     if (visible(head)) chatEdges.push(contentLeft(head));
     // The live and replay feeds share the slot; one is visible.
@@ -185,8 +192,8 @@ export async function measureWorkbenchAlignment(
     if (feed) chatEdges.push(contentLeft(feed));
     const composer = chat.querySelector('.wb-composer');
     if (visible(composer)) chatEdges.push(contentLeft(composer));
-    expectNear('chat left edges (panel+16, head, feed, composer)', chatEdges);
-    const inspectorEdge = innerLeft(inspector) + 16;
+    expectNear('chat left edges (panel+pad, head, feed, composer)', chatEdges);
+    const inspectorEdge = innerLeft(inspector) + pad;
     const inspectorEdges = [inspectorEdge];
     const firstTab = tabs?.querySelector('[role="tab"]');
     if (visible(firstTab)) inspectorEdges.push(contentLeft(firstTab));
@@ -199,7 +206,7 @@ export async function measureWorkbenchAlignment(
     const caption = inspector.querySelector('.wb-caption');
     if (visible(caption)) inspectorEdges.push(contentLeft(caption));
     expectNear(
-      'inspector left edges (panel+16, tab text, section head, body, caption)',
+      'inspector left edges (panel+pad, tab text, section head, body, caption)',
       inspectorEdges,
     );
 
@@ -326,10 +333,10 @@ export async function measureWorkbenchAlignment(
       }
       const facts = requests.querySelector('.wb-requests-facts');
       if (visible(facts)) edges.push(rect(facts).left);
-      if (visible(detail)) edges.unshift(innerLeft(detail) + 16);
+      if (visible(detail)) edges.unshift(innerLeft(detail) + pad);
       if (edges.length > 1)
         expectNear(
-          'requests left edges (detail+16, picker, tabs, facts)',
+          'requests left edges (detail+pad, picker, tabs, facts)',
           edges,
         );
       if (visible(facts)) {
