@@ -6,6 +6,7 @@ import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
 } from './verify-workbench-layout';
+import { selectInspectorTab } from './verify-inspector-tabs';
 
 /** Holds the genuine lazy WASM module so explicit cancellation can precede initialization. */
 async function verifyPendingRuntime(options: {
@@ -131,10 +132,7 @@ export async function verifyJavaScriptWorkbench(options: {
     const output = root.locator('[data-runtime-output]');
     const editor = root.locator('[data-runtime-code]');
     const tab = async (name: string) => {
-      await root
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name, exact: true })
-        .click();
+      await selectInspectorTab(root, name);
     };
     const status = root.locator('.wb-chat .wb-panel-head');
     await tab('State');

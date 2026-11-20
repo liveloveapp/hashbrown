@@ -4,6 +4,7 @@ import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 import { getWorkbenchLesson } from '../examples/quickstart/runtime/workbench-lessons';
 import { getWorkbenchUiPrompts } from '../examples/quickstart/runtime/workbench-ui-kits';
 import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
+import { inspectorTabNames } from './workbench-inspector-helpers';
 
 test.each(['ui-kits', 'ui-chatbot'] as const)(
   '%s opens actual kit inspection and its own prompts',
@@ -19,9 +20,7 @@ test.each(['ui-kits', 'ui-chatbot'] as const)(
       reset: vi.fn(),
     });
 
-    const tabs = [...host.querySelectorAll('[role=tab]')].map(
-      (el) => el.textContent,
-    );
+    const tabs = inspectorTabNames(host);
 
     expect(tabs).toContain('Kit');
     expect(tabs).toContain('Schema');

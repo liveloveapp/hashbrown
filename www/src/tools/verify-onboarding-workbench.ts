@@ -14,6 +14,7 @@ import {
   type WorkbenchInstructionsTrace,
   workbenchOnboardingPrompts,
 } from '../../examples/quickstart/runtime/workbench-onboarding';
+import { selectInspectorTab } from './verify-inspector-tabs';
 
 type OnboardingLesson = 'first-plan' | 'conversation' | 'system-instructions';
 
@@ -81,10 +82,7 @@ export async function verifyOnboardingWorkbench(options: {
       exact: true,
     });
     const tab = async (name: string) => {
-      await root
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name, exact: true })
-        .click();
+      await selectInspectorTab(root, name);
     };
     const revision = async () => {
       await tab('State');

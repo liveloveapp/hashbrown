@@ -14,6 +14,7 @@ import {
   showInspectorMode,
 } from './verify-inspector-modes';
 import { writeFileSync } from 'node:fs';
+import { selectInspectorTab } from './verify-inspector-tabs';
 
 type RecipeLesson = 'prose' | 'predictions' | 'ui-selection';
 type RecipeOutcome =
@@ -131,10 +132,7 @@ export async function verifyRecipeWorkbench(options: {
     const inspection = root.locator('.wb-inspector .wb-inspection');
     const chatStatus = root.locator('.wb-chat .wb-panel-head');
     const tab = async (name: string) => {
-      await root
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name, exact: true })
-        .click();
+      await selectInspectorTab(root, name);
     };
     const revision = async (value: number) => {
       await tab('State');
@@ -595,9 +593,7 @@ export async function verifyRecipeWorkbench(options: {
     await root
       .getByRole('button', { name: 'Return to live', exact: true })
       .click();
-    await revision(
-      lesson === 'prose' ? 0 : lesson === 'ui-selection' ? 2 : 1,
-    );
+    await revision(lesson === 'prose' ? 0 : lesson === 'ui-selection' ? 2 : 1);
     expect(requestCount()).toBe(beforeReplay);
     expect(httpRequests).toBe(beforeReplayHTTP);
     const replayRequests = httpRequests - beforeReplayHTTP;

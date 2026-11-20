@@ -4,6 +4,7 @@ import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { selectInspectorTab } from './verify-inspector-tabs';
 
 /** Exercises actual SDK workflow clients and their synchronized read-only captures. */
 export async function verifyWorkflowWorkbench(options: {
@@ -61,10 +62,7 @@ export async function verifyWorkflowWorkbench(options: {
     const capturedSection = root.locator('.wb-inspector [data-captured]');
     const inspection = capturedSection.locator('.wb-inspection');
     const tab = async (name: string) => {
-      await root
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name, exact: true })
-        .click();
+      await selectInspectorTab(root, name);
     };
     const pairedWorkflowEvidence = async (
       name: 'State' | 'Activities' | 'Interrupts',

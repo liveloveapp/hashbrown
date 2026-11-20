@@ -14,6 +14,7 @@ import {
   mountWorkbench,
   workbenchStateTreeValue,
 } from '../examples/quickstart/runtime/workbench-view';
+import { clickInspectorTab } from './workbench-inspector-helpers';
 
 function fakeStorage() {
   const map = new Map<string, string>();
@@ -87,11 +88,7 @@ function chooseMode(host: HTMLElement, label: string) {
 }
 
 function clickTab(host: HTMLElement, name: string) {
-  const tab = [...host.querySelectorAll<HTMLElement>('[role=tab]')].find(
-    (node) => node.textContent === name,
-  );
-  if (!tab) throw new Error(`Missing tab ${name}`);
-  tab.click();
+  clickInspectorTab(host, name);
 }
 
 const generative = {

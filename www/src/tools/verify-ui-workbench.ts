@@ -13,6 +13,7 @@ import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
 } from './verify-workbench-layout';
+import { selectInspectorTab } from './verify-inspector-tabs';
 
 /** Negative provider-native outcomes used only by the labelled fixture host. */
 export type UiFixtureOutcome =
@@ -74,10 +75,7 @@ export async function verifyUiWorkbench(options: {
     const button = (name: string) =>
       root.getByRole('button', { name, exact: true });
     const tab = async (name: string) => {
-      await root
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name, exact: true })
-        .click();
+      await selectInspectorTab(root, name);
     };
     const inspection = async () => readInspectorJson(root, 'top');
     const ui = async () => {

@@ -7,6 +7,7 @@ import {
 import { type Browser, expect } from '@playwright/test';
 import type { Decision } from '@hashbrownai/core';
 import { resolve } from 'node:path';
+import { selectInspectorTab } from './verify-inspector-tabs';
 
 /** Verifies real decision SDKs against the selected server boundary, retaining measured recording phases. */
 export async function verifyDecisionWorkbench(options: {
@@ -61,10 +62,7 @@ export async function verifyDecisionWorkbench(options: {
     live ? 'Live model' : 'Test fixture',
   );
   mark('firstComplete');
-  await page
-    .getByRole('tablist', { name: 'Inspector views', exact: true })
-    .getByRole('tab', { name: 'State', exact: true })
-    .click();
+  await selectInspectorTab(page, 'State');
   const inspection = page.locator('.wb:visible .wb-inspector .wb-inspection');
   await expectInspectionText(inspection, '"revision": 0');
   await expectInspectionText(inspection, '"nextAction": null');
@@ -76,10 +74,7 @@ export async function verifyDecisionWorkbench(options: {
   await expect(apply).toBeDisabled();
   await expect(apply).toHaveText('Suggestion used');
   if (recording) await page.waitForTimeout(800);
-  await page
-    .getByRole('tablist', { name: 'Inspector views', exact: true })
-    .getByRole('tab', { name: 'JSON', exact: true })
-    .click();
+  await selectInspectorTab(page, 'JSON');
   await page.getByRole('button', { name: 'Follow-up', exact: true }).click();
   mark('followup');
   await send.click();
@@ -116,10 +111,7 @@ export async function verifyDecisionWorkbench(options: {
   ).toHaveCount(1);
   await expect(page.locator('[data-replay] button')).toHaveCount(0);
   if (recording) await page.waitForTimeout(600);
-  await page
-    .getByRole('tablist', { name: 'Inspector views', exact: true })
-    .getByRole('tab', { name: 'State', exact: true })
-    .click();
+  await selectInspectorTab(page, 'State');
   await page
     .getByRole('button', { name: /^Suggestion applied[.]/ })
     .first()
@@ -135,10 +127,7 @@ export async function verifyDecisionWorkbench(options: {
   await expectInspectionText(inspection, '"revision": 1');
   expect(requests).toHaveLength(count);
   mark('returnedLive');
-  await page
-    .getByRole('tablist', { name: 'Inspector views', exact: true })
-    .getByRole('tab', { name: 'JSON', exact: true })
-    .click();
+  await selectInspectorTab(page, 'JSON');
   await page.screenshot({
     path: resolve(
       work,
@@ -176,10 +165,7 @@ export async function verifyDecisionWorkbench(options: {
           cards.getByRole('button', { name: 'Use suggestion', exact: true }),
         ).toBeDisabled();
       } else await expect(page.getByRole('alert').first()).toBeVisible();
-      await page
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name: 'State', exact: true })
-        .click();
+      await selectInspectorTab(page, 'State');
       await expectInspectionText(inspection, '"revision": 0');
     }
     await newConversation();
@@ -207,10 +193,7 @@ export async function verifyDecisionWorkbench(options: {
     await expect(
       cards.getByRole('button', { name: 'Use suggestion', exact: true }),
     ).toBeEnabled();
-    await page
-      .getByRole('tablist', { name: 'Inspector views', exact: true })
-      .getByRole('tab', { name: 'State', exact: true })
-      .click();
+    await selectInspectorTab(page, 'State');
     await expectInspectionText(inspection, '"revision": 0');
   }
   if (!recording) {

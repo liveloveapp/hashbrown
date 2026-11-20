@@ -10,6 +10,7 @@ import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
 } from './verify-workbench-layout';
+import { selectInspectorTab } from './verify-inspector-tabs';
 
 /** Controlled negative cases are confined to the labelled provider fixture. */
 export type AuthoringFixtureOutcome =
@@ -77,10 +78,7 @@ export async function verifyAuthoringWorkbench(options: {
       root.getByRole('button', { name, exact: true });
     const send = root.locator('[data-send]');
     const tab = async (name: string) => {
-      await root
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name, exact: true })
-        .click();
+      await selectInspectorTab(root, name);
     };
     const inspection = async () => readFirstSection(root);
     const detail = async () => readInspectorJson(root, 'bottom');

@@ -3,7 +3,9 @@ import { expect, test, vi } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 import {
   chooseInspectorMode,
+  clickInspectorTab,
   inspectorPanelText,
+  inspectorTabNames,
 } from './workbench-inspector-helpers';
 import {
   canAcceptSummary,
@@ -218,9 +220,7 @@ test('pairs captured and interpreted content under one selection strip', () => {
   });
   store.settle('complete', 'stop');
   const frame = store.getSnapshot().frame;
-  const tabs = [...host.querySelectorAll('[role=tab]')].map(
-    (tab) => tab.textContent,
-  );
+  const tabs = inspectorTabNames(host);
   const bodyBefore = host.querySelector('.wb-inspection pre')?.textContent;
   const titleBefore = host.querySelector('[data-captured] h3')?.textContent;
 
@@ -820,9 +820,7 @@ test('plain text onboarding UI inspector describes text rendering without expose
       reset: vi.fn(),
     });
 
-    [...host.querySelectorAll<HTMLButtonElement>('[role="tab"]')]
-      .find((button) => button.textContent === 'UI')
-      ?.click();
+    clickInspectorTab(host, 'UI');
 
     const inspector = host.querySelector('[role="tabpanel"]');
     expect(inspector?.textContent).toContain('Plain text renderer');

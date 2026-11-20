@@ -43,3 +43,21 @@ export function inspectorSections(
     interpreted: JSON.parse(inspectorPre(host, 'bottom') ?? 'null'),
   };
 }
+
+/** Every inspector view a reader can reach: the bar's tabs, then the More menu's. */
+export function inspectorTabNames(host: HTMLElement): string[] {
+  return [...host.querySelectorAll('[role=tab], .wb-more [role=menuitem]')].map(
+    (node) => node.textContent ?? '',
+  );
+}
+
+/** Chooses an inspector view, going through the More menu when the bar lacks it. */
+export function clickInspectorTab(host: HTMLElement, name: string): void {
+  const target = [
+    ...host.querySelectorAll<HTMLElement>(
+      '[role=tab], .wb-more [role=menuitem]',
+    ),
+  ].find((node) => node.textContent === name);
+  if (!target) throw new Error(`Missing tab ${name}`);
+  target.click();
+}

@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
+import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
+import { workbenchLessons } from '../examples/quickstart/runtime/workbench-lessons';
 import { createWorkbenchTabs } from '../examples/quickstart/runtime/workbench-tabs';
+import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
 
 function mountTabs(replace = false) {
   const tablist = document.createElement('div');
@@ -108,4 +111,111 @@ test('ignores modifier keys, vertical arrows and events already handled locally'
   expect(document.activeElement).toBe(selected);
   tablist.remove();
   panel.remove();
+});
+
+/** Mounts the full workbench shell for a lesson, as the docs embed does. */
+function mountForLesson(id: string) {
+  const lesson = workbenchLessons.find((item) => item.id === id);
+  if (!lesson) throw new Error(`unknown lesson ${id}`);
+  const store = createWorkbenchStore();
+  const host = document.createElement('div');
+  document.body.replaceChildren(host);
+  mountWorkbench(
+    host,
+    store,
+    {
+      framework: 'React',
+      lesson: {
+        id: lesson.id,
+        title: lesson.title,
+        format: lesson.format,
+        inspector: lesson.inspector,
+      },
+      send: vi.fn(),
+      stop: vi.fn(),
+      reset: vi.fn(),
+    },
+    { embed: 'live' },
+  );
+  return { host, store };
+}
+
+function tabNames(shell: { host: HTMLElement }) {
+  return [...shell.host.querySelectorAll('.wb-tabs [role=tab]')].map(
+    (tab) => tab.textContent,
+  );
+}
+
+function selectedTab(shell: { host: HTMLElement }) {
+  return shell.host.querySelector('.wb-tabs [aria-selected=true]')?.textContent;
+}
+
+function moreNames(shell: { host: HTMLElement }) {
+  return [...shell.host.querySelectorAll('.wb-more [role=menuitem]')].map(
+    (item) => item.textContent,
+  );
+}
+
+function chooseMore(shell: { host: HTMLElement }, name: string) {
+  const item = [
+    ...shell.host.querySelectorAll<HTMLElement>('.wb-more [role=menuitem]'),
+  ].find((node) => node.textContent === name);
+  if (!item) throw new Error(`${name} is not in More`);
+  item.click();
+}
+
+test('the bar holds the lead view, Requests and State, and More holds the rest', () => {
+  const shell = mountForLesson('generative-ui');
+
+  expect(tabNames(shell)).toEqual(['UI', 'Requests', 'State']);
+  expect(moreNames(shell)).toEqual(['JSON']);
+});
+
+test('a tab chosen from More joins the bar and stays across renders', () => {
+  const shell = mountForLesson('generative-ui');
+
+  chooseMore(shell, 'JSON');
+  shell.store.seek(0);
+
+  expect(tabNames(shell)).toEqual(['UI', 'Requests', 'State', 'JSON']);
+  expect(selectedTab(shell)).toBe('JSON');
+  expect(moreNames(shell)).toEqual([]);
+});
+
+test('choosing another More tab replaces the promoted one', () => {
+  const shell = mountForLesson('tools');
+
+  chooseMore(shell, 'JSON');
+  chooseMore(shell, 'UI');
+
+  expect(tabNames(shell)).toEqual(['Requests', 'State', 'UI']);
+  expect(selectedTab(shell)).toBe('UI');
+  expect(moreNames(shell)).toEqual(['JSON']);
+});
+
+test('the default lesson tab opens first', () => {
+  const shell = mountForLesson('request-transformation');
+
+  expect(selectedTab(shell)).toBe('Transform');
+});
+
+test('a consumer-supplied tab list bypasses the rule and has no More menu', () => {
+  const store = createWorkbenchStore();
+  const host = document.createElement('div');
+  document.body.replaceChildren(host);
+  mountWorkbench(
+    host,
+    store,
+    { framework: 'React', send: vi.fn(), stop: vi.fn(), reset: vi.fn() },
+    { inspectorTabs: ['JSON', 'UI', 'State'] },
+  );
+
+  const names = [...host.querySelectorAll('.wb-tabs [role=tab]')].map(
+    (tab) => tab.textContent,
+  );
+
+  expect(names).toEqual(['JSON', 'UI', 'State']);
+  expect(host.querySelector<HTMLElement>('.wb-more')?.hidden ?? true).toBe(
+    true,
+  );
 });

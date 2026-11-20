@@ -1,4 +1,5 @@
-import { expect, type Frame, type Page } from '@playwright/test';
+import { type Browser, expect, type Frame, type Page } from '@playwright/test';
+import { selectInspectorTab } from './verify-inspector-tabs';
 
 /**
  * Asserts the shell opens at its recording defaults: expanded sidebar, every
@@ -454,12 +455,13 @@ export async function checkWorkbenchTabs(
 ): Promise<WorkbenchAlignmentReport[]> {
   const reports: WorkbenchAlignmentReport[] = [];
   for (const tab of WORKBENCH_ALIGNMENT_TABS) {
-    const button = target
-      .locator('.wb:visible')
-      .getByRole('tablist', { name: 'Inspector views', exact: true })
-      .getByRole('tab', { name: tab, exact: true });
-    await button.click();
-    await expect(button).toHaveAttribute('aria-selected', 'true');
+    const root = target.locator('.wb:visible');
+    await selectInspectorTab(root, tab);
+    await expect(
+      root
+        .getByRole('tablist', { name: 'Inspector views', exact: true })
+        .getByRole('tab', { name: tab, exact: true }),
+    ).toHaveAttribute('aria-selected', 'true');
     if (tab === 'Requests')
       await expect(
         target.locator('.wb:visible .wb-requests-facts'),
@@ -473,4 +475,53 @@ export async function checkWorkbenchTabs(
     reports.push(report);
   }
   return reports;
+}
+
+/**
+ * Opens the lessons with four bar tabs, a More menu and the mode toggle at the
+ * 790px docs embed frame, and asserts the inspector's tab row neither scrolls
+ * sideways nor pushes the page wider than the frame.
+ *
+ * @param options - The browser and the verifier server origin.
+ * @returns One result per lesson.
+ */
+export async function verifyEmbedTabsRowFits(options: {
+  readonly browser: Browser;
+  /** The verifier server, e.g. `http://127.0.0.1:1234`. */
+  readonly origin: string;
+}) {
+  const results = [];
+  for (const lesson of ['ui-kits', 'server-threads']) {
+    const context = await options.browser.newContext({
+      viewport: { width: 790, height: 720 },
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto(
+        `${options.origin}/react.html?lesson=${lesson}&embed=replay`,
+      );
+      const row = page.locator('.wb:visible .wb-tabs-row');
+      await expect(row).toBeVisible();
+      await expect(
+        row.getByRole('button', { name: 'More', exact: true }),
+      ).toBeVisible();
+      await expect(row.getByRole('tab')).toHaveCount(4);
+      const [scroll, client] = await row.evaluate((node) => [
+        node.scrollWidth,
+        node.clientWidth,
+      ]);
+      expect(scroll, `${lesson} tab row scrolls sideways`).toBeLessThanOrEqual(
+        client,
+      );
+      // The tablist may scroll as a fallback when its lesson has wide modes.
+      // One line: a wrapped row would be taller than a single tab.
+      const height = (await row.boundingBox())?.height ?? Infinity;
+      expect(height, `${lesson} tab row wraps`).toBeLessThanOrEqual(48);
+      await expectNoHorizontalOverflow(page);
+      results.push({ lesson, frame: 790, tabsRowFits: true });
+    } finally {
+      await context.close();
+    }
+  }
+  return results;
 }

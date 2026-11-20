@@ -44,7 +44,11 @@ import {
   type WorkbenchLessonId,
   workbenchLessons,
 } from './workbench-lessons';
-import { workbenchInspectorTabs } from './workbench-tab-rule';
+import { createWorkbenchMoreMenu } from './workbench-more-menu';
+import {
+  workbenchInspectorTabs,
+  workbenchTabLayout,
+} from './workbench-tab-rule';
 import { workbenchIcon, type WorkbenchIconName } from './workbench-icons';
 import {
   adjacentTurnIndex,
@@ -753,21 +757,55 @@ export function mountWorkbench(
   captured.append(capturedHeading, inspection);
   pair.append(captured);
   let tab = commands.lesson?.inspector ?? 'JSON';
-  const tabButtons = (
-    options.inspectorTabs ?? workbenchInspectorTabs(commands.lesson)
-  ).map((name) => {
-    const item = button(name, () => {
+  // A consumer-supplied list bypasses the rule: those tabs show with no More menu.
+  const allTabs =
+    options.inspectorTabs ?? workbenchInspectorTabs(commands.lesson);
+  /** The tab the reader chose from More; it joins the bar until another replaces it. */
+  let promoted: string | undefined;
+  const tabLayout = (): { bar: readonly string[]; more: readonly string[] } => {
+    if (options.inspectorTabs || !commands.lesson)
+      return { bar: allTabs, more: [] };
+    const base = workbenchTabLayout(commands.lesson, allTabs);
+    return promoted !== undefined && base.more.includes(promoted)
+      ? {
+          bar: [...base.bar, promoted],
+          more: base.more.filter((name) => name !== promoted),
+        }
+      : base;
+  };
+  let tabButtons: readonly HTMLButtonElement[] = [];
+  const moreMenu = createWorkbenchMoreMenu({
+    idPrefix: instanceId,
+    onSelect: (name) => {
+      promoted = name;
       tab = name;
       render();
-    });
-    item.id = `${instanceId}-tab-${name.toLowerCase()}`;
-    item.setAttribute('role', 'tab');
-    item.setAttribute('aria-controls', tabPanel.id);
-    return item;
+      tabButtons.find((item) => item.textContent === name)?.focus();
+    },
   });
-  tabs.append(...tabButtons);
+  const syncTabs = (): void => {
+    const { bar, more } = tabLayout();
+    if (
+      tabButtons.length !== bar.length ||
+      tabButtons.some((item, index) => item.textContent !== bar[index])
+    ) {
+      tabButtons = bar.map((name) => {
+        const item = button(name, () => {
+          tab = name;
+          render();
+        });
+        item.id = `${instanceId}-tab-${name.toLowerCase()}`;
+        item.setAttribute('role', 'tab');
+        item.setAttribute('aria-controls', tabPanel.id);
+        return item;
+      });
+      tabs.replaceChildren(...tabButtons);
+    }
+    moreMenu.sync(more);
+  };
+  syncTabs();
   const inspectorTabs = createWorkbenchTabs(tabs, tabPanel);
-  tabsRow.append(tabs, modeControl.element);
+  tabsRow.append(tabs, moreMenu.element, modeControl.element);
   inspector.append(tabsRow, tabPanel);
   const footer = element('section', '', 'wb-playback');
   footer.setAttribute('aria-label', 'Captured timeline');
@@ -1124,6 +1162,7 @@ export function mountWorkbench(
         replay.append(card);
       }
     }
+    syncTabs();
     inspectorTabs.sync(
       tabButtons.find((item) => item.textContent === tab)?.id ??
         tabButtons[0].id,
@@ -1805,6 +1844,7 @@ export function mountWorkbench(
       detachScrub();
       requestsView.dispose();
       inspectorTabs.dispose();
+      moreMenu.dispose();
       modeControl.dispose();
       pause();
       document.removeEventListener('keydown', onShortcut);

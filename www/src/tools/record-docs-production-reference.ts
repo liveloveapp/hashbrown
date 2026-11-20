@@ -17,6 +17,7 @@ import {
   productionRecordingCues,
   verifyProductionRecording,
 } from './workbench-production-recording';
+import { selectInspectorTab } from './verify-inspector-tabs';
 
 if (
   !process.env['OPENAI_API_KEY'] ||
@@ -207,10 +208,7 @@ try {
           .getByText('Outline the demo', { exact: true }),
       ).toBeVisible();
       await mark('approved');
-      await page
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name: 'State', exact: true })
-        .click();
+      await selectInspectorTab(page, 'State');
       await mark('replay');
       const runRequestsBeforeReplay = runRequests;
       await page.getByRole('slider', { name: 'Seek captured event' }).focus();

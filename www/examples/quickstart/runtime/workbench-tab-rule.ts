@@ -29,7 +29,8 @@ export const workbenchTabCompanions: Readonly<
  * returns the default list.
  */
 export function workbenchInspectorTabs(
-  lesson: Pick<WorkbenchLesson, 'id' | 'format'> | undefined,
+  lesson:
+    (Pick<WorkbenchLesson, 'format'> & { readonly id: string }) | undefined,
 ): readonly string[] {
   return [
     ['json-parser', 'natural-forms'].includes(lesson?.id ?? '')
@@ -78,12 +79,14 @@ export function workbenchInspectorTabs(
  * its original order.
  */
 export function workbenchTabLayout(
-  lesson: Pick<WorkbenchLesson, 'id' | 'inspector'>,
+  lesson: { readonly id: string; readonly inspector: string },
   tabs: readonly string[],
 ): WorkbenchTabLayout {
   const wanted = [
     lesson.inspector,
-    workbenchTabCompanions[lesson.id],
+    Object.hasOwn(workbenchTabCompanions, lesson.id)
+      ? workbenchTabCompanions[lesson.id as WorkbenchLessonId]
+      : undefined,
     'Requests',
     'State',
   ];

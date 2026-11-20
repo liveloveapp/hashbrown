@@ -7,7 +7,9 @@ import { createWorkbenchLayoutStore } from '../examples/quickstart/runtime/workb
 import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
 import {
   chooseInspectorMode,
+  clickInspectorTab,
   inspectorPanelText,
+  inspectorTabNames,
 } from './workbench-inspector-helpers';
 
 function fakeStorage() {
@@ -983,9 +985,7 @@ test('history inspector pairs actual SDK and retained app text and Raw keeps the
     isLoading: false,
   });
 
-  const tabs = [...host.querySelectorAll('[role=tab]')].map(
-    (node) => node.textContent,
-  );
+  const tabs = inspectorTabNames(host);
 
   store.recordHistory({ messages: [], isLoading: false, isSending: true });
   expect(
@@ -1046,10 +1046,7 @@ test('history Text and UI views describe the actual selected text without genera
     ],
     isLoading: false,
   });
-  const tab = (name: string) =>
-    [...host.querySelectorAll<HTMLButtonElement>('[role=tab]')]
-      .find((item) => item.textContent === name)
-      ?.click();
+  const tab = (name: string) => clickInspectorTab(host, name);
 
   tab('Text');
 

@@ -603,8 +603,9 @@ body {
 }
 .wb-tabs-row {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: var(--wb-gap);
+  gap: 0;
   min-height: var(--wb-head);
   padding: 0 calc(var(--wb-pad) - var(--wb-tight));
   box-shadow: inset 0 -1px 0 var(--wb-line);
@@ -612,6 +613,12 @@ body {
 /* The mode toggle sits at the right end of the row. */
 .wb-tabs-row > .wb-segmented {
   margin-left: auto;
+}
+/* On a phone-width inspector the toggle drops to its own line under the tabs. */
+@container (max-width: 400px) {
+  .wb-tabs-row {
+    flex-wrap: wrap;
+  }
 }
 /* One line: tabs that do not fit scroll sideways (the mode toggle keeps its width). */
 .wb-tabs {
@@ -622,6 +629,63 @@ body {
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+}
+/* More: the views that do not fit the bar, in a menu under the tabs. */
+.wb-more {
+  position: relative;
+  flex: none;
+  margin-right: var(--wb-space-1);
+}
+.wb .wb-more-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wb-space-1);
+  min-height: var(--wb-head);
+  padding: 0 var(--wb-space-1);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--wb-muted);
+  font-size: 13px;
+}
+.wb .wb-more-button:hover:enabled,
+.wb .wb-more-button[aria-expanded='true'] {
+  color: var(--wb-ink);
+}
+.wb .wb-more-button svg {
+  width: var(--wb-space-3);
+  height: var(--wb-space-3);
+}
+.wb-more-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-width: calc(var(--wb-space-16) * 2);
+  padding: var(--wb-space-1);
+  border: 1px solid var(--wb-line);
+  border-radius: var(--wb-space-2);
+  background: var(--wb-panel);
+  box-shadow: 0 var(--wb-space-2) var(--wb-space-6) rgb(0 0 0 / 12%);
+}
+.wb-more-menu[hidden] {
+  display: none;
+}
+.wb .wb-more-menu button {
+  min-height: var(--wb-space-8);
+  padding: 0 var(--wb-space-3);
+  border: 0;
+  border-radius: var(--wb-space-1);
+  background: none;
+  color: var(--wb-ink);
+  font-size: 13px;
+  text-align: left;
+}
+.wb .wb-more-menu button:hover,
+.wb .wb-more-menu button:focus-visible {
+  background: var(--wb-cobalt-soft);
 }
 /* The 2px underline is the tab's bottom border; a matching top border keeps the label centred. */
 .wb .wb-tabs button {
