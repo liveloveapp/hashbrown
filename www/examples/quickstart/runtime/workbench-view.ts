@@ -44,6 +44,7 @@ import {
   type WorkbenchLessonId,
   workbenchLessons,
 } from './workbench-lessons';
+import { workbenchInspectorTabs } from './workbench-tab-rule';
 import { workbenchIcon, type WorkbenchIconName } from './workbench-icons';
 import {
   adjacentTurnIndex,
@@ -753,55 +754,7 @@ export function mountWorkbench(
   pair.append(captured);
   let tab = commands.lesson?.inspector ?? 'JSON';
   const tabButtons = (
-    options.inspectorTabs ?? [
-      ['json-parser', 'natural-forms'].includes(commands.lesson?.id ?? '')
-        ? 'JSON'
-        : ['text', 'workflow', 'history'].includes(
-              commands.lesson?.format ?? '',
-            )
-          ? commands.lesson?.id === 'prose'
-            ? 'Markdown'
-            : 'Text'
-          : 'JSON',
-      'Requests',
-      ...(commands.lesson?.id === 'local-models' ? ['Model'] : []),
-      ...(commands.lesson?.id === 'javascript-runtime'
-        ? ['Code', 'Runtime']
-        : []),
-      ...(['ui-kits', 'ui-chatbot'].includes(commands.lesson?.id ?? '')
-        ? ['Kit', 'Schema']
-        : []),
-      ...(commands.lesson?.format === 'history'
-        ? commands.lesson.id === 'agent-decisions'
-          ? ['History', 'Agent']
-          : ['json-parser', 'natural-forms'].includes(commands.lesson.id)
-            ? [
-                'History',
-                'Parser',
-                ...(commands.lesson.id === 'natural-forms' ? ['Form'] : []),
-                'Schema',
-              ]
-            : isWorkbenchLoopbackLesson(commands.lesson.id)
-              ? ['History', 'Server', 'Access']
-              : ['History', 'Saved text']
-        : []),
-      ...(['structured', 'predictions', 'selection'].includes(
-        commands.lesson?.format ?? '',
-      )
-        ? ['Schema']
-        : []),
-      ...(commands.lesson?.id === 'request-transformation'
-        ? ['Transform']
-        : []),
-      ...(commands.lesson?.id === 'system-instructions'
-        ? ['Instructions']
-        : []),
-      'UI',
-      'State',
-      ...(commands.lesson?.format === 'workflow'
-        ? ['Activities', 'Interrupts']
-        : []),
-    ]
+    options.inspectorTabs ?? workbenchInspectorTabs(commands.lesson)
   ).map((name) => {
     const item = button(name, () => {
       tab = name;
