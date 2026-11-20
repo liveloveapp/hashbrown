@@ -290,10 +290,23 @@ export async function verifyOnboardingWorkbench(options: {
     await hold();
     const pause = root.getByRole('button', { name: 'Pause', exact: true });
     if (await pause.count()) await pause.click();
+    const streamingChat = root.locator('[data-replay] [data-wb-fresh=""]');
+    if (lesson === 'first-plan') {
+      // A mid-stream frame marks the newest streamed field in the chat card.
+      const seek = root.getByRole('slider', { name: 'Seek captured event' });
+      await seek.press('End');
+      for (let step = 0; step < 24; step += 1) {
+        await seek.press('ArrowLeft');
+        if (await streamingChat.count()) break;
+      }
+      await expect(streamingChat).toHaveCount(1);
+      expect((await streamingChat.innerText()).length).toBeGreaterThan(0);
+    }
     await root
       .getByRole('button', { name: /^Complete[.]/ })
       .first()
       .press('Enter');
+    if (lesson === 'first-plan') await expect(streamingChat).toHaveCount(0);
     await expect(
       lesson === 'first-plan'
         ? root.locator('[data-replay] .wb-summary').first()

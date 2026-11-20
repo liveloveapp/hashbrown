@@ -122,3 +122,46 @@ export function workbenchSettleAt(
   }
   return null;
 }
+
+/**
+ * Maps a path inside a streamed document to the plan card field it feeds.
+ *
+ * A generative UI document nests the card's fields under
+ * `ui.<index>.<Component>.props.`; that prefix is dropped. Other paths pass
+ * through unchanged.
+ *
+ * @param path - A path such as `ui.0.SummaryCard.props.steps.1`.
+ * @returns The card path, such as `steps.1`.
+ */
+export function workbenchCardPath(path: string): string {
+  return path.replace(/^ui\.\d+\.[^.]+\.props\./, '');
+}
+
+/**
+ * Reads the plan card fields from a streamed JSON document, so a card can
+ * render from the same parsed value the Streaming view shows.
+ *
+ * @param value - The parsed partial document.
+ * @returns The title and steps found, or `null` when there are none.
+ */
+export function workbenchCardProps(
+  value: unknown,
+): { title?: string; steps?: string[] } | null {
+  const object = (node: unknown) =>
+    node !== null && typeof node === 'object' && !Array.isArray(node)
+      ? (node as Record<string, unknown>)
+      : undefined;
+  const root = object(value);
+  const ui = Array.isArray(root?.['ui']) ? object(root['ui'][0]) : undefined;
+  const component = ui ? object(Object.values(ui)[0]) : undefined;
+  const props = object(component?.['props']) ?? root;
+  if (!props) return null;
+  const steps = Array.isArray(props['steps'])
+    ? props['steps'].filter((step): step is string => typeof step === 'string')
+    : undefined;
+  const result = {
+    ...(typeof props['title'] === 'string' ? { title: props['title'] } : {}),
+    ...(steps ? { steps } : {}),
+  };
+  return Object.keys(result).length > 0 ? result : null;
+}

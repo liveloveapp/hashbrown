@@ -1,6 +1,8 @@
 import { expect, test } from 'vitest';
 import type { WorkbenchFrame } from '../examples/quickstart/runtime/workbench';
 import {
+  workbenchCardPath,
+  workbenchCardProps,
   workbenchFreshAt,
   workbenchFreshText,
   workbenchFreshWindow,
@@ -96,4 +98,19 @@ test('a streaming frame or a lone completed frame has nothing to settle', () => 
 
   expect(workbenchSettleAt(streaming, 2)).toBeNull();
   expect(workbenchSettleAt(lone, 0)).toBeNull();
+});
+
+test('a streamed UI document path maps to the card field', () => {
+  const path = 'ui.0.SummaryCard.props.steps.1';
+
+  expect(workbenchCardPath(path)).toBe('steps.1');
+  expect(workbenchCardPath('title')).toBe('title');
+});
+
+test('card props come from a UI document or a plain plan', () => {
+  const ui = { ui: [{ SummaryCard: { props: { title: 'T', steps: ['a'] } } }] };
+
+  expect(workbenchCardProps(ui)).toEqual({ title: 'T', steps: ['a'] });
+  expect(workbenchCardProps({ title: 'P' })).toEqual({ title: 'P' });
+  expect(workbenchCardProps({})).toBeNull();
 });

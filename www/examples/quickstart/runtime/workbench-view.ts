@@ -19,6 +19,7 @@ import {
   workbenchCodeLanguage,
 } from './workbench-highlight';
 import {
+  workbenchCardProps,
   type WorkbenchFresh,
   workbenchFreshAt,
   workbenchSettleAt,
@@ -87,6 +88,7 @@ import { attachWorkbenchScrub } from './workbench-scrub';
 import {
   createInspectorModeMemory,
   defaultInspectorMode,
+  parsePartialJson,
   workbenchInspectorModes,
   workbenchStateTree,
 } from './workbench-inspector-modes';
@@ -1095,6 +1097,7 @@ export function mountWorkbench(
   } = { fresh: null, settle: false };
   const visibleFeed = () => (replay.hidden ? live : replay);
   function applyChatFresh() {
+    markWorkbenchFresh(replay.hidden ? replay : live, null);
     markWorkbenchFresh(visibleFeed(), chatFresh.fresh, {
       settle: chatFresh.settle,
     });
@@ -1111,6 +1114,17 @@ export function mountWorkbench(
       subtree: true,
       characterData: true,
     });
+
+  function planCard(props: {
+    readonly title?: string;
+    readonly steps?: readonly string[];
+  }) {
+    const card = element('article', '', 'wb-summary');
+    const steps = element('ol');
+    for (const step of props.steps ?? []) steps.append(element('li', step));
+    card.append(element('h2', props.title ?? 'Waiting for title'), steps);
+    return card;
+  }
 
   function render() {
     const snapshot = store.getSnapshot();
@@ -1233,6 +1247,13 @@ export function mountWorkbench(
         replay.append(plan);
       }
       const messages = frame?.messages ?? [];
+      // The card follows the same parsed value as the Streaming view.
+      const streamedProps =
+        (commands.lesson?.id === 'generative-ui' ||
+          commands.lesson?.id === 'first-plan') &&
+        frame?.json
+          ? workbenchCardProps(parsePartialJson(frame.json))
+          : null;
       for (const message of messages) {
         if (message.role === 'user') {
           replay.append(element('p', message.content, 'wb-user'));
@@ -1255,21 +1276,16 @@ export function mountWorkbench(
           replay.append(element('p', message.content, 'wb-assistant'));
           continue;
         }
-        const props = message.props;
+        const props =
+          message === messages.at(-1) && streamedProps
+            ? streamedProps
+            : message.props;
         if (!props) continue;
-        const card = element('article', '', 'wb-summary');
-        const heading = element('h2', props.title ?? 'Waiting for title');
-        heading.dataset['wbPath'] = 'title';
-        card.append(heading);
-        const steps = element('ol');
-        (props.steps ?? []).forEach((step, index) => {
-          const item = element('li', step);
-          item.dataset['wbPath'] = `steps.${index}`;
-          steps.append(item);
-        });
-        card.append(steps);
-        replay.append(card);
+        replay.append(planCard(props));
       }
+      // The streamed card can exist before its message is captured.
+      if (streamedProps && messages.at(-1)?.role === 'user')
+        replay.append(planCard(streamedProps));
     }
     syncTabs();
     inspectorTabs.sync(

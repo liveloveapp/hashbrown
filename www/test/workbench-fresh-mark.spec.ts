@@ -6,11 +6,9 @@ function card(steps: readonly string[]) {
   const article = document.createElement('article');
   article.className = 'wb-summary';
   const title = document.createElement('h2');
-  title.dataset['wbPath'] = 'title';
   const list = document.createElement('ol');
-  steps.forEach((step, index) => {
+  steps.forEach((step) => {
     const item = document.createElement('li');
-    item.dataset['wbPath'] = `steps.${index}`;
     item.textContent = step;
     list.append(item);
   });
@@ -40,11 +38,7 @@ test('settle writes the settle value', () => {
 
   markWorkbenchFresh(host, { path: 'title', text: 'x' }, { settle: true });
 
-  expect(
-    host
-      .querySelector('[data-wb-fresh="settle"]')
-      ?.getAttribute('data-wb-path'),
-  ).toBe('title');
+  expect(host.querySelector('[data-wb-fresh="settle"]')?.tagName).toBe('H2');
 });
 
 test('null clears every mark', () => {

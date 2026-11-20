@@ -1344,39 +1344,42 @@ try {
         const seek = page.getByRole('slider', { name: 'Seek captured event' });
         const streamingMark = '.wb:visible mark.wb-fresh:not(.wb-fresh-settle)';
         const chatMark = '.wb:visible [data-wb-fresh=""]';
-        // The replay card is built from captured messages, which can trail the
-        // streamed JSON by a frame, so step back to a frame where both exist.
-        const linked = () =>
-          page.evaluate(() => {
-            const root = [...document.querySelectorAll('.wb')].find(
-              (node) => (node as HTMLElement).offsetParent !== null,
-            );
-            const mark = root?.querySelector(
-              'mark.wb-fresh:not(.wb-fresh-settle)',
-            );
-            const marked = root?.querySelectorAll('[data-wb-fresh=""]');
-            const text = mark?.textContent ?? '';
-            return (
-              marked?.length === 1 &&
-              text.length > 0 &&
-              (marked[0].textContent ?? '').endsWith(text)
-            );
-          });
-        const stepBackToLinked = async () => {
-          for (let step = 0; step < 24; step += 1) {
-            await seek.press('ArrowLeft');
-            if (await linked()) return;
-          }
-          throw new Error('No frame with a linked JSON and chat mark');
+        // Both views render from the same frame, so the marked chat element
+        // holds the value at the marked path and ends with the marked text.
+        const expectLinkedMarks = async () => {
+          await expect(page.locator(streamingMark)).toHaveCount(1);
+          await expect(page.locator(chatMark)).toHaveCount(1);
+          const text = await page.locator(streamingMark).innerText();
+          const linked = await page.locator(chatMark).evaluate((node) => ({
+            text: node.textContent ?? '',
+            path:
+              node.tagName === 'H2'
+                ? 'title'
+                : `steps.${[...(node.parentElement?.children ?? [])].indexOf(node)}`,
+          }));
+          const document = JSON.parse(
+            await page
+              .locator('.wb:visible .wb-inspection pre')
+              .first()
+              .innerText(),
+          ) as { ui: { SummaryCard: { props: Record<string, unknown> } }[] };
+          const props = document.ui[0].SummaryCard.props;
+          const value =
+            linked.path === 'title'
+              ? props['title']
+              : (props['steps'] as string[])[Number(linked.path.slice(6))];
+          expect(text.length).toBeGreaterThan(0);
+          expect(linked.text).toBe(value);
+          expect(linked.text.endsWith(text)).toBe(true);
         };
         await seek.press('End');
-        await stepBackToLinked();
-        await expect(page.locator(streamingMark)).toHaveCount(1);
-        await expect(page.locator(chatMark)).toHaveCount(1);
+        for (let step = 0; step < 24; step += 1) {
+          await seek.press('ArrowLeft');
+          if (await page.locator(streamingMark).count()) break;
+        }
+        await expectLinkedMarks();
         for (let step = 0; step < 3; step += 1) await seek.press('ArrowLeft');
-        if (!(await linked())) await stepBackToLinked();
-        await expect(page.locator(streamingMark)).toHaveCount(1);
-        await expect(page.locator(chatMark)).toHaveCount(1);
+        await expectLinkedMarks();
         await seek.press('End');
         await expect(page.locator(streamingMark)).toHaveCount(0);
         await expect(page.locator(chatMark)).toHaveCount(0);

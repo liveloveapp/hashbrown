@@ -865,33 +865,3 @@ test('plain text onboarding UI inspector describes text rendering without expose
     shell.dispose();
   }
 });
-
-test('PlanCard tags its title and steps with data paths', async () => {
-  const { PlanCard } =
-    await import('../examples/quickstart/react/src/PlanCard');
-  const { renderToStaticMarkup } = await import('react-dom/server');
-
-  const html = renderToStaticMarkup(
-    <PlanCard title="T" steps={['one', 'two']} />,
-  );
-
-  expect(html).toContain('<h2 data-wb-path="title">');
-  expect(html).toContain('<li data-wb-path="steps.0">one</li>');
-  expect(html).toContain('<li data-wb-path="steps.1">two</li>');
-});
-
-test('the Angular PlanCard tags its title and steps with data paths', async () => {
-  const { readFileSync } = await import('node:fs');
-  const { resolve } = await import('node:path');
-
-  const source = readFileSync(
-    resolve(
-      process.cwd(),
-      'www/examples/quickstart/angular/src/app/plan-card.ts',
-    ),
-    'utf8',
-  );
-
-  expect(source).toContain('<h2 data-wb-path="title">');
-  expect(source).toContain('[attr.data-wb-path]="\'steps.\' + $index"');
-});
