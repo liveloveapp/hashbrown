@@ -358,9 +358,9 @@ test('persists the split once when a drag ends', () => {
 
   expect(writesWhileDragging).toBe(0);
   expect(setItem).toHaveBeenCalledTimes(1);
-  expect(
-    JSON.parse(storage.map.get(workbenchLayoutKey) as string).split,
-  ).toBe(60);
+  expect(JSON.parse(storage.map.get(workbenchLayoutKey) as string).split).toBe(
+    60,
+  );
   shell.dispose();
 });
 
@@ -878,7 +878,8 @@ test('toggles the rail with Cmd+B and Ctrl+B', () => {
   press(document.body, 'B', { ctrlKey: true });
 
   expect(afterCmd).toBe(true);
-  expect(layout.get().rail).toBe(false);
+  expect(layout.get().rail).toBe(true);
+  expect(document.querySelector('.wb-nav-overlay')).not.toBeNull();
   shell.dispose();
 });
 
@@ -1243,5 +1244,129 @@ test('preserves focused controls and handled keys while body shortcuts still pla
   expect(press(document.body, 'ArrowRight').defaultPrevented).toBe(true);
 
   expect(store.getSnapshot().cursor).toBe(1);
+  shell.dispose();
+});
+
+function railLayoutStore(saved?: Record<string, unknown>) {
+  const storage = fakeStorage();
+  if (saved) storage.map.set(workbenchLayoutKey, JSON.stringify(saved));
+  return { storage, layout: createWorkbenchLayoutStore(storage) };
+}
+
+function railButton(host: HTMLElement) {
+  return host.querySelector<HTMLButtonElement>('.wb-rail-toggle');
+}
+
+test('the rail button opens the lesson overlay and Escape closes it', () => {
+  const { layout } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+
+  railButton(host)?.click();
+  const opened = host.querySelector('.wb-nav-overlay');
+  const expandedOpen = railButton(host)?.getAttribute('aria-expanded');
+  document.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+  );
+
+  expect(opened?.querySelector('.wb-cta')).not.toBeNull();
+  expect(opened?.querySelectorAll('.wb-lessons a').length).toBeGreaterThan(0);
+  expect(expandedOpen).toBe('true');
+  expect(host.querySelector('.wb-nav-overlay')).toBeNull();
+  expect(railButton(host)?.getAttribute('aria-expanded')).toBe('false');
+  expect(document.activeElement).toBe(railButton(host));
+  expect(layout.get().rail).toBe(true);
+  shell.dispose();
+});
+
+test('clicking outside the overlay closes it', () => {
+  const { layout } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+  railButton(host)?.click();
+
+  host.querySelector<HTMLElement>('.wb-chat')?.click();
+
+  expect(host.querySelector('.wb-nav-overlay')).toBeNull();
+  shell.dispose();
+});
+
+test('choosing a lesson closes the overlay', () => {
+  const { layout } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+  railButton(host)?.click();
+  const link = host.querySelector<HTMLAnchorElement>(
+    '.wb-nav-overlay .wb-lessons a',
+  );
+  link?.addEventListener('click', (event) => event.preventDefault());
+
+  link?.click();
+
+  expect(host.querySelector('.wb-nav-overlay')).toBeNull();
+  expect(document.activeElement).toBe(railButton(host));
+  shell.dispose();
+});
+
+test('Keep open pins the sidebar and saves rail false', () => {
+  const { layout, storage } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+  railButton(host)?.click();
+
+  host
+    .querySelector<HTMLButtonElement>('.wb-nav-overlay [data-nav-key="pin"]')
+    ?.click();
+
+  expect(host.querySelector('.wb-nav-overlay')).toBeNull();
+  expect(host.querySelector('.wb')?.classList.contains('wb-rail')).toBe(false);
+  expect(JSON.parse(storage.map.get(workbenchLayoutKey) ?? '{}').rail).toBe(
+    false,
+  );
+  shell.dispose();
+});
+
+test('the overlay is never saved', () => {
+  const { layout, storage } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+
+  railButton(host)?.click();
+
+  expect(storage.map.get(workbenchLayoutKey) ?? '').not.toContain('overlay');
+  shell.dispose();
+});
+
+test("the current lesson's section opens even when saved collapsed", () => {
+  const { layout, storage } = railLayoutStore({
+    rail: false,
+    collapsed: ['start', 'concepts', 'production', 'recipes'],
+    split: 44,
+  });
+  const { host, shell } = mountShell(layout);
+
+  const group = host.querySelector('[data-section=concepts] [data-collapsed]');
+  const stillCollapsed = host.querySelector(
+    '[data-section=production] [data-collapsed]',
+  );
+
+  expect(group).toBeNull();
+  expect(stillCollapsed).not.toBeNull();
+  expect(
+    JSON.parse(storage.map.get(workbenchLayoutKey) ?? '{}').collapsed,
+  ).toContain('concepts');
+  shell.dispose();
+});
+
+test('the toggle-sidebar shortcut opens the overlay in rail mode', () => {
+  const { layout } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+
+  document.dispatchEvent(
+    new KeyboardEvent('keydown', {
+      key: 'b',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+
+  expect(host.querySelector('.wb-nav-overlay')).not.toBeNull();
+  expect(layout.get().rail).toBe(true);
   shell.dispose();
 });

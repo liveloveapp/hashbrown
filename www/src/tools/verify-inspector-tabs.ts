@@ -22,3 +22,27 @@ export async function selectInspectorTab(
   await row.getByRole('button', { name: 'More', exact: true }).click();
   await row.getByRole('menuitem', { name, exact: true }).click();
 }
+
+/**
+ * Makes every lesson reachable the way a reader does: in the default icon rail
+ * it clicks the rail button to open the overlay, then unfolds any collapsed
+ * section (only the current lesson's section starts open). With the sidebar
+ * already open, or in the stacked narrow layout, it only unfolds sections.
+ *
+ * @param scope - The page, frame or the visible workbench shell.
+ */
+export async function openLessons(
+  scope: Page | Frame | Locator,
+): Promise<void> {
+  if ((await scope.locator('.wb-nav-overlay').count()) === 0) {
+    const rail = scope.locator(
+      '.wb-rail-toggle[aria-label="Expand sidebar"]:visible',
+    );
+    if ((await rail.count()) > 0) await rail.first().click();
+  }
+  const folded = scope.locator(
+    '.wb-nav-heading[aria-expanded="false"]:visible',
+  );
+  // Unfolding re-renders the list, so always take the first one still folded.
+  while ((await folded.count()) > 0) await folded.first().click();
+}

@@ -362,37 +362,68 @@ body {
   opacity: 0;
 }
 
+/* The lesson overlay: the full sidebar floats over the chat from the rail. */
+.wb-nav {
+  position: relative;
+}
+.wb-overlay-open .wb-nav {
+  overflow: visible;
+}
+.wb-nav-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-1);
+  width: 216px;
+  max-width: calc(100vw - var(--wb-space-8));
+  padding: var(--wb-pad);
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid var(--wb-line);
+  border-radius: 10px;
+  background: var(--wb-panel);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+/* The rail button lives under the overlay's own controls while it is open. */
+.wb-overlay-open .wb-nav > .wb-nav-top {
+  visibility: hidden;
+}
+
 /* Icon rail (wide layouts only; under 800px the sidebar is a strip). */
 @media (min-width: 801px) {
-  .wb-rail .wb-nav-top {
+  .wb-rail:not(.wb-overlay-open) .wb-nav-top {
     flex-direction: column-reverse;
   }
-  .wb-rail .wb-label {
+  .wb-rail:not(.wb-overlay-open) .wb-label {
     display: none;
   }
-  .wb.wb-rail .wb-cta {
+  .wb.wb-rail:not(.wb-overlay-open) .wb-cta {
     flex: none;
     width: var(--wb-space-8);
     padding: 0;
   }
-  .wb-rail .wb-nav-group h2 {
+  .wb-rail:not(.wb-overlay-open) .wb-nav-group h2 {
     height: 1px;
     margin: var(--wb-space-2) var(--wb-space-1) calc(var(--wb-space-2) - 1px);
     background: var(--wb-line);
   }
-  .wb-rail .wb-nav-heading {
+  .wb-rail:not(.wb-overlay-open) .wb-nav-heading {
     visibility: hidden;
     height: 0;
     padding: 0;
     margin: 0;
     overflow: hidden;
   }
-  .wb-rail .wb-nav-group [data-collapsed] {
+  .wb-rail:not(.wb-overlay-open) .wb-nav-group [data-collapsed] {
     gap: var(--wb-space-1);
   }
-  .wb.wb-rail .wb-conversations > button,
-  .wb.wb-rail .wb-lessons > a,
-  .wb.wb-rail .wb-nav-group [data-collapsed] > * {
+  .wb.wb-rail:not(.wb-overlay-open) .wb-conversations > button,
+  .wb.wb-rail:not(.wb-overlay-open) .wb-lessons > a,
+  .wb.wb-rail:not(.wb-overlay-open) .wb-nav-group [data-collapsed] > * {
     justify-content: center;
     width: var(--wb-space-8);
     height: var(--wb-space-8);
@@ -400,7 +431,9 @@ body {
     opacity: 1;
   }
   /* Tooltip from the accessible name. Fixed so the scrolling nav does not clip it. */
-  .wb-rail .wb-nav [aria-label]:is(:hover, :focus-visible)::after {
+  .wb-rail:not(.wb-overlay-open)
+    .wb-nav
+    [aria-label]:is(:hover, :focus-visible)::after {
     content: attr(aria-label);
     position: fixed;
     left: var(--wb-space-16);
@@ -1733,6 +1766,15 @@ app-workflow-workbench-conversation[hidden] {
   .wb-split,
   .wb .wb-rail-toggle {
     display: none;
+  }
+  /* The stacked strip is already open: the overlay is just the strip. */
+  .wb-nav-overlay {
+    position: static;
+    width: auto;
+    max-width: none;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
   }
   .wb-nav {
     margin-right: 0;

@@ -63,8 +63,7 @@ import {
   hostedWorkbenchLessons as workbenchLessons,
 } from '../../examples/quickstart/runtime/workbench-lessons';
 import { createWorkbenchApp } from '../../examples/quickstart/server/workbench-app';
-import { selectInspectorTab } from './verify-inspector-tabs';
-import { seedOpenWorkbenchLayout } from './workbench-open-layout';
+import { openLessons, selectInspectorTab } from './verify-inspector-tabs';
 
 const live = process.env['WORKBENCH_LIVE'] === '1';
 const recording = process.env['WORKBENCH_RECORD'] === '1';
@@ -961,7 +960,6 @@ try {
           ? { recordVideo: { dir: work, size: { width: 1600, height: 1000 } } }
           : {}),
       });
-      await seedOpenWorkbenchLayout(page);
       const captureStarted = Date.now();
       const phases: Record<string, number> = {};
       const mark = (name: string) => {
@@ -1005,12 +1003,14 @@ try {
         const selected = page.locator(
           '.wb:visible .wb-nav [aria-pressed=true]',
         );
-        const before = await selected.innerText();
+        // The accessible name, not innerText: the icon rail hides the labels, and
+        // an empty `before` would make the wait below pass at once.
+        const before = (await selected.getAttribute('aria-label')) ?? '';
         await page
           .getByRole('button', { name: 'New conversation', exact: true })
           .click();
         try {
-          await expect(selected).not.toHaveText(before);
+          await expect(selected).not.toHaveAttribute('aria-label', before);
         } catch (error) {
           await page.screenshot({
             path: resolve(
@@ -1062,7 +1062,7 @@ try {
         await expect(
           page.locator('.wb:visible .wb-inspector [data-captured]'),
         ).toBeVisible();
-      await expectWorkbenchDefaultLayout(page);
+      await expectWorkbenchDefaultLayout(page, { rail: true });
       await expect(
         page
           .getByRole('tablist', { name: 'Inspector views', exact: true })
@@ -1472,9 +1472,13 @@ try {
       if (!live) {
         const beforeNavigation = requests.length;
         const target = lesson.id === 'tools' ? 'structured-output' : 'tools';
+        // The default layout is the icon rail: open the overlay, choose, and
+        // confirm choosing closes it again.
+        await openLessons(page);
         await page
           .locator(`.wb:visible .wb-lessons a[href$="lesson=${target}"]`)
           .click();
+        await expect(page.locator('.wb-nav-overlay')).toHaveCount(0);
         await expect(page.locator('.wb:visible [data-send]')).toBeEnabled();
         await expect(page.locator('.wb:visible .wb-summary')).toHaveCount(0);
         expect(requests).toHaveLength(beforeNavigation);

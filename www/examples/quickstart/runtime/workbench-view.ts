@@ -34,6 +34,7 @@ import {
 } from './workbench';
 import {
   createWorkbenchLayoutStore,
+  workbenchExpandSection,
   workbenchLayout,
   type WorkbenchLayoutStore,
 } from './workbench-layout';
@@ -41,6 +42,7 @@ import {
   getWorkbenchLesson,
   isWorkbenchLoopbackLesson,
   type WorkbenchLesson,
+  workbenchLessonGroups,
   type WorkbenchLessonId,
   workbenchLessons,
 } from './workbench-lessons';
@@ -562,18 +564,49 @@ export function mountWorkbench(
   const nav = element('nav', '', 'wb-nav');
   nav.setAttribute('aria-label', 'Examples and conversations');
   let sidebarKey: string | undefined;
+  // View state only: the lesson overlay is never saved.
+  let overlayOpen = false;
   function renderLayout() {
     const current = layoutStore.get();
     layout.style.setProperty('--wb-chat', `${current.split}fr`);
     layout.style.setProperty('--wb-inspector', `${100 - current.split}fr`);
-    const key = JSON.stringify([current.rail, current.collapsed]);
+    const key = JSON.stringify([current.rail, current.collapsed, overlayOpen]);
     if (key !== sidebarKey) renderNavigation();
   }
+  function railToggle() {
+    return nav.querySelector<HTMLElement>('.wb-nav-top .wb-rail-toggle');
+  }
+  function openOverlay() {
+    if (embed || overlayOpen || !layoutStore.get().rail) return;
+    overlayOpen = true;
+    renderNavigation();
+    const target =
+      nav.querySelector<HTMLElement>('.wb-nav-overlay [aria-current="page"]') ??
+      nav.querySelector<HTMLElement>('.wb-nav-overlay [data-nav-key="pin"]');
+    target?.focus();
+  }
+  function closeOverlay(returnFocus: boolean) {
+    if (!overlayOpen) return;
+    overlayOpen = false;
+    renderNavigation();
+    if (returnFocus) railToggle()?.focus();
+  }
+  // An outside click dismisses the overlay (Escape is handled in onShortcut).
+  function onOverlayClick(event: MouseEvent) {
+    if (!overlayOpen) return;
+    // The path is fixed at dispatch, so a control re-rendered by this click still counts as inside.
+    if (event.composedPath().includes(nav)) return;
+    const active = document.activeElement;
+    closeOverlay(!active || active === document.body);
+  }
+  document.addEventListener('click', onOverlayClick);
   function renderNavigation() {
     if (embed) return;
     const current = layoutStore.get();
-    sidebarKey = JSON.stringify([current.rail, current.collapsed]);
+    sidebarKey = JSON.stringify([current.rail, current.collapsed, overlayOpen]);
+    if (!current.rail) overlayOpen = false;
     root.classList.toggle('wb-rail', current.rail);
+    root.classList.toggle('wb-overlay-open', overlayOpen);
     renderWorkbenchSidebar(nav, {
       framework: commands.framework,
       fixedTopic: options.fixedSidebarTopic,
@@ -599,6 +632,13 @@ export function mountWorkbench(
           store.clear();
           prompt.value = prompts[0];
         }
+      },
+      overlayOpen,
+      onOpenOverlay: openOverlay,
+      onCloseOverlay: () => closeOverlay(true),
+      onPin: () => {
+        overlayOpen = false;
+        layoutStore.set({ rail: false });
       },
       onToggleRail: () => layoutStore.set({ rail: !layoutStore.get().rail }),
       onToggleSection: (section) => {
@@ -951,12 +991,20 @@ export function mountWorkbench(
   function onShortcut(event: KeyboardEvent) {
     if (event.defaultPrevented || !root.isConnected) return;
     if (root.closest('[hidden]')) return;
+    if (event.key === 'Escape' && overlayOpen) {
+      event.preventDefault();
+      closeOverlay(true);
+      return;
+    }
     const shortcut = workbenchShortcut(event, event.target);
     if (!shortcut) return;
     if (shortcut === 'toggle-sidebar') {
       if (embed) return;
       event.preventDefault();
-      layoutStore.set({ rail: !layoutStore.get().rail });
+      if (layoutStore.get().rail) {
+        if (overlayOpen) closeOverlay(true);
+        else openOverlay();
+      } else layoutStore.set({ rail: true });
       return;
     }
     // A replay embed has no live run to return to.
@@ -1791,6 +1839,19 @@ export function mountWorkbench(
       else if (following) live.scrollTop = live.scrollHeight;
     });
   }
+  // Open the current lesson's section for this visit without saving it.
+  if (!embed && !options.fixedSidebarTopic) {
+    const currentSection = workbenchLessonGroups.find(({ lessons }) =>
+      lessons.includes(
+        (commands.lesson?.id ?? 'generative-ui') as WorkbenchLessonId,
+      ),
+    )?.id;
+    const saved = layoutStore.get();
+    if (currentSection && saved.collapsed.includes(currentSection))
+      layoutStore.set(workbenchExpandSection(saved, currentSection), {
+        persist: false,
+      });
+  }
   renderLayout();
   const unsubscribeLayout = layoutStore.subscribe(renderLayout);
   const unsubscribe = store.subscribe(render);
@@ -1848,6 +1909,7 @@ export function mountWorkbench(
       modeControl.dispose();
       pause();
       document.removeEventListener('keydown', onShortcut);
+      document.removeEventListener('click', onOverlayClick);
       unsubscribe();
       unsubscribeLayout();
       split.dispose();

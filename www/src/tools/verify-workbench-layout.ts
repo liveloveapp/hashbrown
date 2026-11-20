@@ -2,20 +2,27 @@ import { type Browser, expect, type Frame, type Page } from '@playwright/test';
 import { selectInspectorTab } from './verify-inspector-tabs';
 
 /**
- * Asserts the shell opens at its recording defaults: expanded sidebar, every
+ * Asserts the shell opens at its recording defaults: expanded sidebar (or, with
+ * `rail`, the icon rail), every
  * section open, a 44/56 split, and one inspector panel (or, on the Requests tab,
  * the table, with the player as the only slider).
  */
-export async function expectWorkbenchDefaultLayout(page: Page): Promise<void> {
+export async function expectWorkbenchDefaultLayout(
+  page: Page,
+  options: { readonly rail?: boolean } = {},
+): Promise<void> {
   const root = page.locator('.wb:visible');
-  await expect(root).not.toHaveClass(/\bwb-rail\b/);
+  // With `rail`, the shell is a reader's first visit: the icon rail, not the open sidebar.
+  if (options.rail) await expect(root).toHaveClass(/\bwb-rail\b/);
+  else await expect(root).not.toHaveClass(/\bwb-rail\b/);
   await expect(root.locator('.wb-split')).toHaveAttribute(
     'aria-valuenow',
     '44',
   );
-  await expect(
-    root.locator('.wb-nav-heading[aria-expanded=false]'),
-  ).toHaveCount(0);
+  if (!options.rail)
+    await expect(
+      root.locator('.wb-nav-heading[aria-expanded=false]'),
+    ).toHaveCount(0);
   const requests = root.locator('.wb-inspector .wb-requests');
   if ((await requests.count()) > 0) {
     // The Requests tab is a table; the player's slider is the only scrubber.
