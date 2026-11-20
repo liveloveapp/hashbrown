@@ -623,11 +623,9 @@ body {
   overflow-x: auto;
   scrollbar-width: none;
 }
-.wb .wb-tabs button {
-  flex: none;
-}
 /* The 2px underline is the tab's bottom border; a matching top border keeps the label centred. */
 .wb .wb-tabs button {
+  flex: none;
   min-height: var(--wb-head);
   padding: 0 var(--wb-space-2);
   border: 0;

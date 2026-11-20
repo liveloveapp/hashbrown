@@ -15,6 +15,10 @@ import {
   workbenchEventLabel,
 } from '../examples/quickstart/runtime/workbench-view';
 
+function modeLabels(host: HTMLElement) {
+  return [...host.querySelectorAll('[role=radio]')].map((r) => r.textContent);
+}
+
 test('binds assistant cards to the preceding user turn without changing earlier origins', () => {
   const origins = {
     u1: { turn: 1, revision: 0 },
@@ -540,6 +544,7 @@ test('shows the shared plan contract separately from the parsed preview in the S
   expect(captured?.textContent).toContain('"type": "object"');
   expect(captured?.textContent).toContain('"steps"');
   chooseInspectorMode(host, 'bottom');
+  expect(modeLabels(host)).toContain('Preview validation');
   shell.dispose();
 });
 
@@ -795,6 +800,7 @@ test('shows Markdown and selected source details through the recipe inspector in
     host.querySelector('.wb-inspector .wb-inspection')?.textContent,
   ).toContain('## Our plan');
   chooseInspectorMode(host, 'bottom');
+  expect(modeLabels(host)).toContain('Selected reference');
   expect(inspectorPanelText(host)).toContain('https://hashbrown.dev');
   shell.dispose();
 });
