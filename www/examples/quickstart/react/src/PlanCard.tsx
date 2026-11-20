@@ -8,10 +8,12 @@ export function PlanCard(props: {
 }) {
   return (
     <article className="wb-summary" aria-label="Summary card">
-      <h2>{props.title || 'Building your plan…'}</h2>
+      <h2 data-wb-path="title">{props.title || 'Building your plan…'}</h2>
       <ol>
         {(props.steps ?? []).map((step, index) => (
-          <li key={index}>{step}</li>
+          <li key={index} data-wb-path={`steps.${index}`}>
+            {step}
+          </li>
         ))}
       </ol>
       {props.children}

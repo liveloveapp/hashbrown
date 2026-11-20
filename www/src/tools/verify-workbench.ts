@@ -1,4 +1,7 @@
-import { readApplicationState } from './verify-inspector-modes';
+import {
+  readApplicationState,
+  showInspectorMode,
+} from './verify-inspector-modes';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import { verifyWorkbenchKeyboard } from './verify-workbench-keyboard';
 import { verifyLocalWorkbench } from './verify-local-workbench';
@@ -1334,6 +1337,51 @@ try {
         .toContain('"revision": 1');
       if (process.env['WORKBENCH_RECORD'] === '1')
         await page.waitForTimeout(700);
+      if (!live && lesson.id === 'generative-ui') {
+        // The newest streamed text lights up in the UI tab's JSON and in the chat card.
+        await selectInspectorTab(page, 'UI');
+        await showInspectorMode(page.locator('.wb:visible'), 'streaming');
+        const seek = page.getByRole('slider', { name: 'Seek captured event' });
+        const streamingMark = '.wb:visible mark.wb-fresh:not(.wb-fresh-settle)';
+        const chatMark = '.wb:visible [data-wb-fresh=""]';
+        // The replay card is built from captured messages, which can trail the
+        // streamed JSON by a frame, so step back to a frame where both exist.
+        const linked = () =>
+          page.evaluate(() => {
+            const root = [...document.querySelectorAll('.wb')].find(
+              (node) => (node as HTMLElement).offsetParent !== null,
+            );
+            const mark = root?.querySelector(
+              'mark.wb-fresh:not(.wb-fresh-settle)',
+            );
+            const marked = root?.querySelectorAll('[data-wb-fresh=""]');
+            const text = mark?.textContent ?? '';
+            return (
+              marked?.length === 1 &&
+              text.length > 0 &&
+              (marked[0].textContent ?? '').endsWith(text)
+            );
+          });
+        const stepBackToLinked = async () => {
+          for (let step = 0; step < 24; step += 1) {
+            await seek.press('ArrowLeft');
+            if (await linked()) return;
+          }
+          throw new Error('No frame with a linked JSON and chat mark');
+        };
+        await seek.press('End');
+        await stepBackToLinked();
+        await expect(page.locator(streamingMark)).toHaveCount(1);
+        await expect(page.locator(chatMark)).toHaveCount(1);
+        for (let step = 0; step < 3; step += 1) await seek.press('ArrowLeft');
+        if (!(await linked())) await stepBackToLinked();
+        await expect(page.locator(streamingMark)).toHaveCount(1);
+        await expect(page.locator(chatMark)).toHaveCount(1);
+        await seek.press('End');
+        await expect(page.locator(streamingMark)).toHaveCount(0);
+        await expect(page.locator(chatMark)).toHaveCount(0);
+        await selectInspectorTab(page, 'State');
+      }
       const slider = page.getByRole('slider', { name: 'Seek captured event' });
       if (lesson.id === 'debugging') {
         await page.getByRole('button', { name: /^HTTP 403[.]/ }).press('Enter');

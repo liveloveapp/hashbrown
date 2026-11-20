@@ -18,7 +18,12 @@ import {
   renderWorkbenchFreshJson,
   workbenchCodeLanguage,
 } from './workbench-highlight';
-import { workbenchFreshAt, workbenchSettleAt } from './workbench-fresh';
+import {
+  type WorkbenchFresh,
+  workbenchFreshAt,
+  workbenchSettleAt,
+} from './workbench-fresh';
+import { markWorkbenchFresh } from './workbench-fresh-mark';
 import {
   isWorkbenchWorkflowProgress,
   workbenchWorkflowPrompts,
@@ -1084,6 +1089,29 @@ export function mountWorkbench(
       ),
     );
   }
+  let chatFresh: {
+    readonly fresh: WorkbenchFresh | null;
+    readonly settle: boolean;
+  } = { fresh: null, settle: false };
+  const visibleFeed = () => (replay.hidden ? live : replay);
+  function applyChatFresh() {
+    markWorkbenchFresh(visibleFeed(), chatFresh.fresh, {
+      settle: chatFresh.settle,
+    });
+  }
+  // The framework commits after this view renders; re-mark when it does.
+  // Attributes are not observed, so the marks never retrigger the observer.
+  const chatObserver =
+    typeof MutationObserver === 'undefined'
+      ? null
+      : new MutationObserver(applyChatFresh);
+  for (const feed of [live, replay])
+    chatObserver?.observe(feed, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
   function render() {
     const snapshot = store.getSnapshot();
     const frame = snapshot.frame;
@@ -1230,9 +1258,15 @@ export function mountWorkbench(
         const props = message.props;
         if (!props) continue;
         const card = element('article', '', 'wb-summary');
-        card.append(element('h2', props.title ?? 'Waiting for title'));
+        const heading = element('h2', props.title ?? 'Waiting for title');
+        heading.dataset['wbPath'] = 'title';
+        card.append(heading);
         const steps = element('ol');
-        for (const step of props.steps ?? []) steps.append(element('li', step));
+        (props.steps ?? []).forEach((step, index) => {
+          const item = element('li', step);
+          item.dataset['wbPath'] = `steps.${index}`;
+          steps.append(item);
+        });
         card.append(steps);
         replay.append(card);
       }
@@ -1489,6 +1523,23 @@ export function mountWorkbench(
                     ? 'Application state'
                     : 'Requests and tools');
     const selectedIndex = snapshot.cursor ?? snapshot.events.length - 1;
+    {
+      const marksChat =
+        commands.lesson?.id === 'generative-ui' ||
+        commands.lesson?.id === 'first-plan';
+      const settled = marksChat
+        ? workbenchSettleAt(snapshot.events, selectedIndex)
+        : null;
+      chatFresh = settled
+        ? { fresh: settled, settle: true }
+        : {
+            fresh: marksChat
+              ? workbenchFreshAt(snapshot.events, selectedIndex)
+              : null,
+            settle: false,
+          };
+      applyChatFresh();
+    }
     const requestContext =
       frame?.kind === 'request' ||
       frame?.kind === 'tool' ||
@@ -1948,6 +1999,7 @@ export function mountWorkbench(
       const captureIndex = captureSources.indexOf(captureSource);
       if (captureIndex >= 0) captureSources.splice(captureIndex, 1);
       exposeWorkbenchCapture();
+      chatObserver?.disconnect();
       messages?.dispose();
       detachScrub();
       requestsView.dispose();

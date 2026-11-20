@@ -2136,3 +2136,21 @@ mark.wb-fresh-settle {
     box-shadow: none;
   }
 }
+
+[data-wb-fresh] {
+  background: var(--wb-cobalt-soft);
+  border-radius: 1px;
+  box-shadow: 0 0 0 2px var(--wb-cobalt-soft);
+}
+
+[data-wb-fresh='settle'] {
+  animation: wb-fresh-settle 400ms forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-wb-fresh='settle'] {
+    animation: none;
+    background: transparent;
+    box-shadow: none;
+  }
+}
