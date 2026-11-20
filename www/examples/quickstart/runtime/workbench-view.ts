@@ -543,12 +543,16 @@ export function mountWorkbench(
   const header = element('header', '', 'wb-header');
   header.append(
     element('strong', 'Hashbrown'),
-    element('span', commands.lesson?.title ?? 'Conversation workbench'),
     element('span', commands.framework, 'wb-muted'),
   );
-  const provenance = element('span', 'Awaiting source', 'wb-muted');
+  const provenance = element(
+    'span',
+    'Awaiting source',
+    'wb-muted wb-visually-hidden',
+  );
   provenance.dataset.source = '';
   header.append(provenance);
+  if (embed) header.classList.add('wb-visually-hidden');
   const layout = element('div', '', 'wb-layout');
   const nav = element('nav', '', 'wb-nav');
   nav.setAttribute('aria-label', 'Examples and conversations');
@@ -616,17 +620,13 @@ export function mountWorkbench(
   const chat = element('section', '', 'wb-chat wb-panel');
   chat.setAttribute('aria-label', 'Conversation');
   const chatHeader = element('div', '', 'wb-panel-head');
-  const status = element('span', 'Ready', 'wb-muted');
+  if (embed) chatHeader.classList.add('wb-visually-hidden');
+  const status = element('span', 'Ready', 'wb-muted wb-visually-hidden');
   status.setAttribute('role', 'status');
   status.setAttribute('aria-live', 'polite');
   status.setAttribute('aria-atomic', 'true');
   chatHeader.append(
-    element(
-      'h1',
-      commands.lesson?.id === 'javascript-runtime'
-        ? 'Calculate from your plan'
-        : 'A plan, built together',
-    ),
+    element('h1', commands.lesson?.title ?? 'Conversation workbench'),
     status,
   );
   const live = element('div', '', 'wb-feed');
@@ -639,12 +639,13 @@ export function mountWorkbench(
   replay.dataset.replay = '';
   replay.hidden = true;
   const form = element('form', '', 'wb-composer');
-  const label = element('label', 'Your message');
+  const label = element('label', 'Your message', 'wb-visually-hidden');
   label.htmlFor = `${instanceId}-prompt`;
   const prompt = element('textarea');
   prompt.id = `${instanceId}-prompt`;
   prompt.value = prompts[0];
   prompt.rows = 2;
+  prompt.placeholder = 'Ask a follow-up';
   const actions = element('div', '', 'wb-actions');
   const send = element('button', 'Send', 'wb-primary');
   send.type = 'submit';
@@ -658,6 +659,8 @@ export function mountWorkbench(
     prompt.value = prompts[1];
     prompt.focus();
   });
+  first.classList.add('wb-quiet');
+  followup.classList.add('wb-quiet');
   actions.append(first, followup, send, stop);
   form.append(label, prompt, actions);
   if (commands.lesson?.id === 'javascript-runtime') {
@@ -1098,6 +1101,7 @@ export function mountWorkbench(
       (commands.lesson?.id === 'local-models' &&
         frame?.localModel?.state !== 'ready');
     stop.disabled = historical || !busy;
+    stop.hidden = !busy;
     denyCheckbox.disabled = historical || busy;
     denyCheckbox.checked = historical
       ? visibleEvents.some(
@@ -1132,11 +1136,7 @@ export function mountWorkbench(
         workbenchDecisionPlan.steps.forEach((step) =>
           steps.append(element('li', step)),
         );
-        plan.append(
-          element('span', 'Application-owned plan', 'wb-muted'),
-          element('h2', workbenchDecisionPlan.title),
-          steps,
-        );
+        plan.append(element('h2', workbenchDecisionPlan.title), steps);
         replay.append(plan);
       }
       const messages = frame?.messages ?? [];

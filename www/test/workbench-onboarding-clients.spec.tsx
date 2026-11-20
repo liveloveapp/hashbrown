@@ -81,7 +81,7 @@ test('text lifecycle distinguishes plain onboarding from the Prose citation less
   }
 });
 
-test('structured application cards preserve their application-owned label', async () => {
+test('structured application cards carry no eyebrow label', async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   const store = createWorkbenchStore();
   const host = document.createElement('div');
@@ -101,6 +101,6 @@ test('structured application cards preserve their application-owned label', asyn
   const text = host.textContent;
   await act(() => root.unmount());
 
-  expect(text).toContain('Typed plan · application component');
-  expect(text).not.toContain('SummaryCard · trusted component');
+  expect(text).not.toContain('Typed plan · application component');
+  expect(text).not.toContain('trusted component');
 });

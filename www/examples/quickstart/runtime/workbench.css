@@ -158,7 +158,7 @@ body {
   font-weight: 600;
   letter-spacing: -0.04em;
 }
-.wb-header > :last-child {
+.wb-header > :nth-child(2) {
   margin-left: auto;
 }
 .wb-header,
@@ -524,6 +524,16 @@ body {
 }
 .wb-actions > [data-send] {
   margin-left: auto;
+}
+.wb .wb-quiet {
+  min-height: calc(var(--wb-space-6) + var(--wb-space-1));
+  padding: 0 var(--wb-space-2);
+  border: 0;
+  background: transparent;
+  color: var(--wb-muted);
+}
+.wb .wb-quiet:hover:enabled {
+  color: var(--wb-ink);
 }
 
 /* Chat/inspector handle */
