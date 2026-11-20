@@ -1485,9 +1485,13 @@ try {
         // The rail button is hidden in the stacked narrow layout, so go wide.
         if (process.env['WORKBENCH_RECORD'] !== '1')
           await page.setViewportSize({ width: 1440, height: 900 });
-        // Let the wide layout settle: the rail button shows once the strip is gone.
+        // Let the wide layout settle. The strip's stale button is shown by CSS
+        // before the sidebar re-renders as the rail, so wait for the rail's own
+        // accessible name rather than for any visible toggle.
         await expect(
-          page.locator('.wb:visible .wb-rail-toggle').first(),
+          page
+            .locator('.wb:visible .wb-rail-toggle[aria-label="Expand sidebar"]')
+            .first(),
         ).toBeVisible();
         await openLessons(page);
         await expect(page.locator('.wb-nav-overlay')).toBeVisible();

@@ -38,16 +38,10 @@ export async function openLessons(
   const rail = scope.locator(
     '.wb-rail-toggle[aria-label="Expand sidebar"]:visible',
   );
-  // The app may move focus right after a conversation change, which dismisses
-  // an overlay opened a moment earlier (tabbing out closes it): try again.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if ((await overlay.count()) > 0 || (await rail.count()) === 0) break;
+  if ((await overlay.count()) === 0 && (await rail.count()) > 0) {
     await rail.first().click();
-    try {
-      await overlay.first().waitFor({ state: 'visible', timeout: 1500 });
-    } catch {
-      // Dismissed or not opened; the next attempt clicks again.
-    }
+    // Fails clearly when the overlay does not appear.
+    await overlay.first().waitFor({ state: 'visible', timeout: 5000 });
   }
   const folded = scope.locator(
     '.wb-nav-heading[aria-expanded="false"]:visible',

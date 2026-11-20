@@ -1406,3 +1406,27 @@ test('tabbing out of the overlay closes it without stealing focus', () => {
   expect(document.activeElement).not.toBe(railButton(host));
   shell.dispose();
 });
+
+test('the sidebar re-renders as the rail when the viewport widens past the stacked layout', () => {
+  const listeners = new Set<() => void>();
+  const query = {
+    matches: true,
+    addEventListener: (_: string, listener: () => void) =>
+      void listeners.add(listener),
+    removeEventListener: (_: string, listener: () => void) =>
+      void listeners.delete(listener),
+  };
+  vi.stubGlobal('matchMedia', () => query);
+  const { layout } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+  const stackedLabel = railButton(host)?.getAttribute('aria-label');
+
+  query.matches = false;
+  listeners.forEach((listener) => listener());
+
+  expect(stackedLabel).toBe('Collapse sidebar');
+  expect(railButton(host)?.getAttribute('aria-label')).toBe('Expand sidebar');
+  expect(host.querySelector('.wb-nav .wb-cta')).toBeNull();
+  shell.dispose();
+  vi.unstubAllGlobals();
+});
