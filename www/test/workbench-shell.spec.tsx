@@ -117,10 +117,7 @@ test('collapses to an icon rail that keeps accessible names', () => {
   host.querySelector<HTMLButtonElement>('.wb-rail-toggle')?.click();
 
   const toggle = host.querySelector('.wb-rail-toggle');
-  const named = [
-    ...host.querySelectorAll('.wb-lessons a'),
-    host.querySelector('.wb-cta'),
-  ];
+  const named = [...host.querySelectorAll('.wb-lessons a')];
   expect(host.querySelector('.wb')?.classList.contains('wb-rail')).toBe(true);
   expect(toggle?.getAttribute('aria-label')).toBe('Expand sidebar');
   expect(toggle?.getAttribute('aria-expanded')).toBe('false');
@@ -1368,5 +1365,44 @@ test('the toggle-sidebar shortcut opens the overlay in rail mode', () => {
 
   expect(host.querySelector('.wb-nav-overlay')).not.toBeNull();
   expect(layout.get().rail).toBe(true);
+  shell.dispose();
+});
+
+test('the rail holds no New conversation or conversation list until the overlay opens', () => {
+  const { layout } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+
+  const before = [
+    host.querySelector('.wb-nav .wb-cta'),
+    host.querySelector('.wb-nav .wb-conversations'),
+    host.querySelectorAll('.wb-nav .wb-lessons a').length,
+  ];
+  railButton(host)?.click();
+
+  expect(before.slice(0, 2)).toEqual([null, null]);
+  expect(before[2]).toBeGreaterThan(0);
+  expect(host.querySelector('.wb-nav-overlay .wb-cta')).not.toBeNull();
+  expect(
+    host.querySelector('.wb-nav-overlay .wb-conversations'),
+  ).not.toBeNull();
+  expect(host.querySelector('.wb-nav-overlay')?.getAttribute('role')).toBe(
+    'group',
+  );
+  shell.dispose();
+});
+
+test('tabbing out of the overlay closes it without stealing focus', () => {
+  const { layout } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+  railButton(host)?.click();
+  const outside = host.querySelector<HTMLElement>('textarea');
+  const inside = host.querySelector<HTMLElement>('.wb-nav-overlay a');
+
+  inside?.dispatchEvent(
+    new FocusEvent('focusout', { bubbles: true, relatedTarget: outside }),
+  );
+
+  expect(host.querySelector('.wb-nav-overlay')).toBeNull();
+  expect(document.activeElement).not.toBe(railButton(host));
   shell.dispose();
 });

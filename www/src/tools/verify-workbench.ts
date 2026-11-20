@@ -1005,12 +1005,18 @@ try {
         );
         // The accessible name, not innerText: the icon rail hides the labels, and
         // an empty `before` would make the wait below pass at once.
+        // New conversation and the conversation list live in the rail's overlay.
+        await openLessons(page);
         const before = (await selected.getAttribute('aria-label')) ?? '';
         await page
           .getByRole('button', { name: 'New conversation', exact: true })
           .click();
         try {
+          // Creating closes the overlay; reopen it to read the selection.
+          await openLessons(page);
           await expect(selected).not.toHaveAttribute('aria-label', before);
+          if ((await page.locator('.wb-nav-overlay').count()) > 0)
+            await page.keyboard.press('Escape');
         } catch (error) {
           await page.screenshot({
             path: resolve(
@@ -1383,6 +1389,8 @@ try {
         await expect(
           page.getByRole('article', { name: 'Summary card' }),
         ).toHaveCount(0);
+        // Conversations live in the rail's overlay; choosing one closes it.
+        await openLessons(page);
         await page
           .getByRole('button', { name: 'Two-step plan', exact: true })
           .click();
@@ -1474,7 +1482,15 @@ try {
         const target = lesson.id === 'tools' ? 'structured-output' : 'tools';
         // The default layout is the icon rail: open the overlay, choose, and
         // confirm choosing closes it again.
+        // The rail button is hidden in the stacked narrow layout, so go wide.
+        if (process.env['WORKBENCH_RECORD'] !== '1')
+          await page.setViewportSize({ width: 1440, height: 900 });
+        // Let the wide layout settle: the rail button shows once the strip is gone.
+        await expect(
+          page.locator('.wb:visible .wb-rail-toggle').first(),
+        ).toBeVisible();
         await openLessons(page);
+        await expect(page.locator('.wb-nav-overlay')).toBeVisible();
         await page
           .locator(`.wb:visible .wb-lessons a[href$="lesson=${target}"]`)
           .click();

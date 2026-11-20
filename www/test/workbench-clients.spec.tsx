@@ -2,6 +2,10 @@
 import { expect, test, vi } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 import {
+  createWorkbenchLayoutStore,
+  workbenchLayoutKey,
+} from '../examples/quickstart/runtime/workbench-layout';
+import {
   chooseInspectorMode,
   clickInspectorTab,
   inspectorPanelText,
@@ -19,6 +23,20 @@ import {
 
 function modeLabels(host: HTMLElement) {
   return [...host.querySelectorAll('[role=radio]')].map((r) => r.textContent);
+}
+
+/** A layout store with the sidebar open, so conversation controls render inline. */
+function openSidebarLayout() {
+  const map = new Map<string, string>([
+    [
+      workbenchLayoutKey,
+      JSON.stringify({ rail: false, collapsed: [], split: 44 }),
+    ],
+  ]);
+  return createWorkbenchLayoutStore({
+    getItem: (key) => map.get(key) ?? null,
+    setItem: (key, value) => void map.set(key, value),
+  });
 }
 
 test('binds assistant cards to the preceding user turn without changing earlier origins', () => {
@@ -306,12 +324,17 @@ test('labels captured fixture provenance and pauses playback when selecting the 
   vi.useFakeTimers();
   const host = document.createElement('div');
   const store = createWorkbenchStore();
-  const shell = mountWorkbench(host, store, {
-    framework: 'React',
-    send: vi.fn(),
-    stop: vi.fn(),
-    reset: vi.fn(),
-  });
+  const shell = mountWorkbench(
+    host,
+    store,
+    {
+      framework: 'React',
+      send: vi.fn(),
+      stop: vi.fn(),
+      reset: vi.fn(),
+    },
+    { layout: openSidebarLayout() },
+  );
   store.send('Plan');
   store.record('source', { source: 'test-fixture' });
   store.settle('complete', 'stop');
@@ -341,12 +364,17 @@ test('retained conversation navigation selects sessions without clearing their c
   store.settle('complete', 'stop');
   const select = vi.fn();
   const create = vi.fn();
-  const shell = mountWorkbench(host, store, {
-    framework: 'React',
-    send: vi.fn(),
-    stop: vi.fn(),
-    reset: vi.fn(),
-  });
+  const shell = mountWorkbench(
+    host,
+    store,
+    {
+      framework: 'React',
+      send: vi.fn(),
+      stop: vi.fn(),
+      reset: vi.fn(),
+    },
+    { layout: openSidebarLayout() },
+  );
 
   shell.navigation({
     currentId: 'one',

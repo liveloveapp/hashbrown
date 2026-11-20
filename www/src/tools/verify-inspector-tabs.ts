@@ -34,11 +34,20 @@ export async function selectInspectorTab(
 export async function openLessons(
   scope: Page | Frame | Locator,
 ): Promise<void> {
-  if ((await scope.locator('.wb-nav-overlay').count()) === 0) {
-    const rail = scope.locator(
-      '.wb-rail-toggle[aria-label="Expand sidebar"]:visible',
-    );
-    if ((await rail.count()) > 0) await rail.first().click();
+  const overlay = scope.locator('.wb-nav-overlay');
+  const rail = scope.locator(
+    '.wb-rail-toggle[aria-label="Expand sidebar"]:visible',
+  );
+  // The app may move focus right after a conversation change, which dismisses
+  // an overlay opened a moment earlier (tabbing out closes it): try again.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if ((await overlay.count()) > 0 || (await rail.count()) === 0) break;
+    await rail.first().click();
+    try {
+      await overlay.first().waitFor({ state: 'visible', timeout: 1500 });
+    } catch {
+      // Dismissed or not opened; the next attempt clicks again.
+    }
   }
   const folded = scope.locator(
     '.wb-nav-heading[aria-expanded="false"]:visible',

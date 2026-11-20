@@ -32,6 +32,8 @@ export interface WorkbenchSidebarOptions {
   readonly onSelect: (id: string) => void;
   /** Starts a new conversation. */
   readonly onCreate: () => void;
+  /** The stacked narrow layout has no rail: the full sidebar always renders. */
+  readonly stacked?: boolean;
   /** In rail mode, whether the full sidebar floats over the chat. View state only. */
   readonly overlayOpen: boolean;
   /** Opens the lesson overlay from the rail button. */
@@ -122,6 +124,8 @@ export function renderWorkbenchSidebar(
   options: WorkbenchSidebarOptions,
 ): void {
   const restore = focusedKey(nav);
+  if (options.stacked)
+    options = { ...options, layout: { ...options.layout, rail: false } };
   if (options.layout.rail && options.overlayOpen) {
     // The rail keeps only its button; the full sidebar floats over it.
     const rail = railButton(options, 'Close lessons', options.onCloseOverlay);
@@ -131,6 +135,8 @@ export function renderWorkbenchSidebar(
     top.append(rail);
     const overlay = document.createElement('div');
     overlay.className = 'wb-nav-overlay';
+    overlay.setAttribute('role', 'group');
+    overlay.setAttribute('aria-label', 'Lessons');
     overlay.append(
       ...buildSidebar({
         ...options,
@@ -193,7 +199,9 @@ function buildSidebar(options: SidebarBuild): HTMLElement[] {
       );
   if (options.pin) rail.dataset.navKey = 'pin';
   else rail.setAttribute('aria-expanded', String(!layout.rail));
-  top.append(...(options.hideCreate ? [] : [cta]), rail);
+  // The rail is lesson icons only; New conversation and the conversation list
+  // live in the overlay.
+  top.append(...(options.hideCreate || layout.rail ? [] : [cta]), rail);
 
   function group(
     section: WorkbenchSidebarSection,
@@ -282,7 +290,9 @@ function buildSidebar(options: SidebarBuild): HTMLElement[] {
 
   return [
     top,
-    group('conversations', 'Conversations', conversations),
+    ...(layout.rail
+      ? []
+      : [group('conversations', 'Conversations', conversations)]),
     ...lessonGroups,
   ];
 }

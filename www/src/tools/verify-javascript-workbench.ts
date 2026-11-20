@@ -17,6 +17,7 @@ async function verifyPendingRuntime(options: {
 }) {
   for (const action of ['stop', 'navigate']) {
     const page = await options.browser.newPage();
+    await seedOpenWorkbenchLayout(page);
     let release!: () => void;
     const held = new Promise<void>((resolve) => {
       release = resolve;

@@ -566,11 +566,20 @@ export function mountWorkbench(
   let sidebarKey: string | undefined;
   // View state only: the lesson overlay is never saved.
   let overlayOpen = false;
+  // At 800px and under the sidebar is a strip, not a rail: no overlay there.
+  const stackedQuery = embed
+    ? undefined
+    : globalThis.matchMedia?.('(max-width: 800px)');
   function renderLayout() {
     const current = layoutStore.get();
     layout.style.setProperty('--wb-chat', `${current.split}fr`);
     layout.style.setProperty('--wb-inspector', `${100 - current.split}fr`);
-    const key = JSON.stringify([current.rail, current.collapsed, overlayOpen]);
+    const key = JSON.stringify([
+      current.rail,
+      current.collapsed,
+      overlayOpen,
+      !!stackedQuery?.matches,
+    ]);
     if (key !== sidebarKey) renderNavigation();
   }
   function railToggle() {
@@ -578,6 +587,7 @@ export function mountWorkbench(
   }
   function openOverlay() {
     if (embed || overlayOpen || !layoutStore.get().rail) return;
+    if (stackedQuery?.matches) return;
     overlayOpen = true;
     renderNavigation();
     const target =
@@ -600,11 +610,24 @@ export function mountWorkbench(
     closeOverlay(!active || active === document.body);
   }
   document.addEventListener('click', onOverlayClick);
+  // Tabbing out of the overlay dismisses it; focus goes where the reader tabbed.
+  function onNavFocusOut(event: FocusEvent) {
+    const next = event.relatedTarget;
+    if (overlayOpen && next instanceof Node && !nav.contains(next))
+      closeOverlay(false);
+  }
+  nav.addEventListener('focusout', onNavFocusOut);
+  stackedQuery?.addEventListener?.('change', renderLayout);
   function renderNavigation() {
     if (embed) return;
     const current = layoutStore.get();
-    sidebarKey = JSON.stringify([current.rail, current.collapsed, overlayOpen]);
-    if (!current.rail) overlayOpen = false;
+    if (!current.rail || stackedQuery?.matches) overlayOpen = false;
+    sidebarKey = JSON.stringify([
+      current.rail,
+      current.collapsed,
+      overlayOpen,
+      !!stackedQuery?.matches,
+    ]);
     root.classList.toggle('wb-rail', current.rail);
     root.classList.toggle('wb-overlay-open', overlayOpen);
     renderWorkbenchSidebar(nav, {
@@ -633,6 +656,7 @@ export function mountWorkbench(
           prompt.value = prompts[0];
         }
       },
+      stacked: !!stackedQuery?.matches,
       overlayOpen,
       onOpenOverlay: openOverlay,
       onCloseOverlay: () => closeOverlay(true),
@@ -1001,6 +1025,7 @@ export function mountWorkbench(
     if (shortcut === 'toggle-sidebar') {
       if (embed) return;
       event.preventDefault();
+      if (stackedQuery?.matches) return;
       if (layoutStore.get().rail) {
         if (overlayOpen) closeOverlay(true);
         else openOverlay();
@@ -1839,7 +1864,8 @@ export function mountWorkbench(
       else if (following) live.scrollTop = live.scrollHeight;
     });
   }
-  // Open the current lesson's section for this visit without saving it.
+  // Open the current lesson's section for this visit without saving it. (A later
+  // persisted layout write saves the whole layout, expansion included; accepted.)
   if (!embed && !options.fixedSidebarTopic) {
     const currentSection = workbenchLessonGroups.find(({ lessons }) =>
       lessons.includes(
@@ -1910,6 +1936,8 @@ export function mountWorkbench(
       pause();
       document.removeEventListener('keydown', onShortcut);
       document.removeEventListener('click', onOverlayClick);
+      nav.removeEventListener('focusout', onNavFocusOut);
+      stackedQuery?.removeEventListener?.('change', renderLayout);
       unsubscribe();
       unsubscribeLayout();
       split.dispose();
