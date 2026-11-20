@@ -113,7 +113,7 @@ Use Tab to reach the active inspector tab. Left and right arrows switch views; H
 
 Focus the bottom scrubber to use its native arrow, Home, and End keys. Its accessible value names the turn, event, milestone, and elapsed time. Status announcements follow lifecycle changes, such as loading or completion, rather than announcing every token.
 
-The Requests tab opens with an overview timeline you can drag or click to seek, above a table of requests grouped by turn. Each row shows status, start, duration, events, and a waterfall, and tool calls sit under the request that called them. Select a request to open Overview, Messages, Tools, State, Raw request (as captured), and Response (every streamed event). Tool rows show Call, Result, and Raw. A failed HTTP request shows Overview and Raw. Press Escape or select **Close request detail** to go back to the table.
+The Requests tab is a table of requests grouped by turn. It follows the player's playhead, so use the bottom scrubber to move through the run. Each row shows status, start, duration, events, and a waterfall, and tool calls sit under the request that called them. Select a request to open Overview, Messages, Tools, State, Raw request (as captured), and Response (every streamed event). Tool rows show Call, Result, and Raw. A failed HTTP request shows Overview and Raw. Press Escape or select **Close request detail** to go back to the table.
 
 **New conversation** at the top of the sidebar starts an independent session; select a session under Conversations to return to it. The sidebar toggle (Cmd+B or Ctrl+B) collapses it to an icon rail. Sessions are kept in memory and clear on refresh.
 

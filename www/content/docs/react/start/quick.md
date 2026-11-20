@@ -126,13 +126,9 @@ export function PlanCard(props: {
   readonly title: string;
   readonly steps: string[];
   readonly children?: ReactNode;
-  readonly label?: string;
 }) {
   return (
     <article className="wb-summary" aria-label="Summary card">
-      <span className="wb-muted">
-        {props.label ?? 'SummaryCard · trusted component'}
-      </span>
       <h2>{props.title || 'Building your plan…'}</h2>
       <ol>
         {(props.steps ?? []).map((step, index) => (

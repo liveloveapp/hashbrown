@@ -600,7 +600,7 @@ test('positions ticks and the flag on the scrubber', () => {
   expect(
     segments.map((segment) => segment.style.getPropertyValue('--wb-fill')),
   ).toEqual(['100%', '0%']);
-  expect(segments[1]?.textContent).toContain('Turn 2');
+  expect(segments[1]?.title).toBe('Turn 2');
   shell.dispose();
 });
 
@@ -634,6 +634,27 @@ test('marks only the tick under the playhead so its mark yields to the thumb', (
   expect(gap).toBeGreaterThan(-1);
   expect(onTick).toEqual([String(tickIndexes[0])]);
   expect(betweenTicks).toEqual([]);
+  shell.dispose();
+});
+
+test('turn labels and the milestone flag show only on hover or focus', () => {
+  const { host, store, shell } = mountShell();
+  recordTwoTurns(store);
+
+  const segments = [
+    ...host.querySelectorAll<HTMLElement>('.wb-scrubber .wb-segment'),
+  ];
+  const flag = host.querySelector('.wb-scrubber .wb-flag');
+
+  expect(segments.map((segment) => segment.getAttribute('title'))).toEqual([
+    'Turn 1',
+    'Turn 2',
+  ]);
+  expect(segments.map((segment) => segment.getAttribute('aria-label'))).toEqual(
+    ['Turn 1', 'Turn 2'],
+  );
+  expect(segments.every((segment) => segment.textContent === '')).toBe(true);
+  expect(flag?.classList.contains('wb-on-hover')).toBe(true);
   shell.dispose();
 });
 

@@ -2,8 +2,8 @@ import { expect, type Frame, type Page } from '@playwright/test';
 
 /**
  * Asserts the shell opens at its recording defaults: expanded sidebar, every
- * section open, a 44/56 split, and one inspector panel (or, on the Requests tab, the
- * overview slider above the table).
+ * section open, a 44/56 split, and one inspector panel (or, on the Requests tab,
+ * the table, with the player as the only slider).
  */
 export async function expectWorkbenchDefaultLayout(page: Page): Promise<void> {
   const root = page.locator('.wb:visible');
@@ -17,10 +17,11 @@ export async function expectWorkbenchDefaultLayout(page: Page): Promise<void> {
   ).toHaveCount(0);
   const requests = root.locator('.wb-inspector .wb-requests');
   if ((await requests.count()) > 0) {
-    // The Requests tab shows an overview and a table; there is no inspector panel.
+    // The Requests tab is a table; the player's slider is the only scrubber.
     await expect(
-      requests.getByRole('slider', { name: 'Seek request timeline' }),
+      root.getByRole('slider', { name: 'Seek captured event' }),
     ).toBeVisible();
+    await expect(requests.getByRole('slider')).toHaveCount(0);
     // Before the first request the table has no rows, so it has no size.
     await expect(requests.locator('table.wb-requests-table')).toBeAttached();
     return;
@@ -451,7 +452,7 @@ export async function measureWorkbenchAlignment(
       // paddings and rows are on the grid, not their viewport-driven height.
       if (
         element.matches(
-          'button, select, input:not([type="range"]), [role="tab"], [role="treeitem"], tr, .wb-panel-head, .wb-tabs-row, .wb-segmented, .wb-requests-tabs, .wb-requests-detail-head, .wb-requests-pickbar, .wb-requests-overview, .wb-playback, .wb-scrubber',
+          'button, select, input:not([type="range"]), [role="tab"], [role="treeitem"], tr, .wb-panel-head, .wb-tabs-row, .wb-segmented, .wb-requests-tabs, .wb-requests-detail-head, .wb-requests-pickbar, .wb-playback, .wb-scrubber',
         ) &&
         !onGrid(rect(element).height)
       )

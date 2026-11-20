@@ -877,7 +877,7 @@ export function mountWorkbench(
   const timing = element('span', 'No captured events', 'wb-time wb-mono');
   const segments = element('div', '', 'wb-segments');
   const events = element('div', '', 'wb-events');
-  const flag = element('span', '', 'wb-flag');
+  const flag = element('span', '', 'wb-flag wb-on-hover');
   flag.setAttribute('aria-hidden', 'true');
   const previous = iconButton('Previous event', 'previous-event', () => {
     pause();
@@ -1753,7 +1753,8 @@ export function mountWorkbench(
           '--wb-fill',
           `${workbenchSegmentFill({ start, end }, selectedIndex, total)}%`,
         );
-        segment.append(element('span', `Turn ${turn}`, 'wb-mono'));
+        segment.title = `Turn ${turn}`;
+        segment.setAttribute('aria-label', `Turn ${turn}`);
         return segment;
       }),
     );

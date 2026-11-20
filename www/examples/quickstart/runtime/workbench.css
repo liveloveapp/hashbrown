@@ -823,7 +823,7 @@ body {
   flex-direction: column;
 }
 
-/* Requests view: overview timeline, turn-grouped table and detail beside it. */
+/* Requests view: turn-grouped table and detail beside it. */
 .wb .wb-requests.wb-inspection {
   gap: 0;
   padding: 0;
@@ -835,125 +835,6 @@ body {
 }
 .wb-requests-empty {
   padding: var(--wb-pad);
-}
-.wb-requests-overview {
-  flex: none;
-  /* Flag row above the strip, time axis labels below it: 64px in all. */
-  padding: var(--wb-space-5) var(--wb-pad) var(--wb-pad);
-  box-shadow: inset 0 -1px 0 var(--wb-line);
-}
-.wb-requests-track {
-  position: relative;
-  height: 28px;
-  border-radius: 6px;
-  background: var(--wb-code);
-  box-shadow: inset 0 0 0 1px var(--wb-track);
-  cursor: pointer;
-  /* The scrub controller owns pointer input; stop the browser panning under a drag. */
-  touch-action: none;
-}
-.wb-requests-track[data-disabled] {
-  cursor: default;
-}
-.wb-requests-played {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  border-radius: 6px 0 0 6px;
-  background: rgb(0 47 167 / 6%);
-  pointer-events: none;
-}
-.wb-requests-bands,
-.wb-requests-bars {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.wb-requests-band {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  border-left: 1px dashed var(--wb-faint);
-}
-/* Axis labels sit below each band's start, clipped to the band's width. */
-.wb-requests-band > span {
-  position: absolute;
-  top: calc(100% + var(--wb-space-1));
-  left: 0;
-  right: 0;
-  overflow: hidden;
-  color: var(--wb-muted);
-  font: 10px/12px var(--wb-mono-font);
-  text-overflow: clip;
-  white-space: nowrap;
-}
-/* Three 4px lanes, 4px apart, centred in the 28px strip. */
-.wb-requests-bar {
-  position: absolute;
-  top: var(--wb-space-1);
-  min-width: var(--wb-space-1);
-  height: var(--wb-space-1);
-  border-radius: 2px;
-  background: var(--wb-cobalt);
-}
-.wb-requests-bar[data-lane='stream'] {
-  top: var(--wb-space-3);
-  background: #a5b4e8;
-}
-.wb-requests-bar[data-lane='tool'] {
-  top: var(--wb-space-5);
-  background: var(--wb-tok-number);
-}
-.wb-requests-bar[data-lane='error'] {
-  background: var(--wb-live);
-}
-.wb-requests-playhead {
-  position: absolute;
-  top: -2px;
-  bottom: -2px;
-  width: 2px;
-  margin-left: -1px;
-  background: var(--wb-ink);
-  pointer-events: none;
-}
-.wb-requests-playhead::before {
-  content: '';
-  position: absolute;
-  /* Centred on the strip so it clears the flag above and the axis below, and on the 2px line (border-box: the 3px ring is inside the 16px). */
-  top: calc(50% - var(--wb-space-2));
-  left: calc(1px - var(--wb-space-2));
-  box-sizing: border-box;
-  width: var(--wb-space-4);
-  height: var(--wb-space-4);
-  border: 3px solid var(--wb-cobalt);
-  border-radius: 999px;
-  background: #fff;
-}
-.wb-requests-flag {
-  position: absolute;
-  top: calc(-1 * var(--wb-space-5));
-  max-width: 200px;
-  padding: 2px var(--wb-space-2);
-  overflow: hidden;
-  border-radius: 6px;
-  background: var(--wb-ink);
-  color: #fff;
-  font-size: 11px;
-  line-height: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-.wb-requests-flag[data-anchor='start'] {
-  transform: none;
-}
-.wb-requests-flag[data-anchor='end'] {
-  transform: translateX(-100%);
-}
-.wb-requests-flag:empty {
-  display: none;
 }
 .wb-requests-pickbar {
   display: none;
@@ -1372,13 +1253,9 @@ body {
   text-decoration: underline;
 }
 /*
- * A narrow inspector drops the overview strip (the main timeline scrubs) and
- * shows the detail alone; the header picker opens the table as a list over it.
+ * A narrow inspector shows the detail alone; the header picker opens the table as a list over it.
  */
 @container wb-requests (max-width: 559px) {
-  .wb-requests-overview {
-    display: none;
-  }
   .wb-requests-pickbar:not([hidden]) {
     display: flex;
     padding: var(--wb-space-2) var(--wb-pad);
@@ -1532,23 +1409,7 @@ body {
   border-radius: inherit;
   background: var(--wb-cobalt);
 }
-/* The label's top is 40px in the scrubber; -1px puts it on its tick's 2px line. */
-.wb-segment > span {
-  position: absolute;
-  top: calc(var(--wb-space-10) - var(--wb-track-top));
-  left: -1px;
-  color: var(--wb-muted);
-  white-space: nowrap;
-}
-/* Each turn segment is a size container, so a turn too short for its label hides it instead of colliding with the next. */
-.wb-segment {
-  container-type: inline-size;
-}
-@container (max-width: 47px) {
-  .wb-segment > span {
-    visibility: hidden;
-  }
-}
+/* Turn segments stay quiet; the turn name shows as a tooltip (title) on hover. */
 /* The native range is the playhead: a transparent track with a cobalt thumb, centred on 0–100%. */
 .wb-scrubber input[type='range'] {
   position: absolute;
@@ -1681,6 +1542,14 @@ body {
 }
 .wb-flag:empty {
   display: none;
+}
+/* The milestone flag only appears while the reader is on the scrubber. */
+.wb-flag.wb-on-hover {
+  opacity: 0;
+}
+.wb-scrubber:hover .wb-flag.wb-on-hover,
+.wb-scrubber:focus-within .wb-flag.wb-on-hover {
+  opacity: 1;
 }
 .wb-time {
   flex: none;
@@ -1903,14 +1772,10 @@ app-workflow-workbench-conversation[hidden] {
   .wb-segment::after {
     background: Highlight;
   }
-  .wb-requests-bar,
-  .wb-requests-fall > span,
-  .wb-requests-playhead {
+  .wb-requests-fall > span {
     background: CanvasText;
   }
-  .wb-requests-bar[data-lane='error'],
-  .wb-requests-fall > [data-lane='error'],
-  .wb-requests-played {
+  .wb-requests-fall > [data-lane='error'] {
     background: Highlight;
   }
   .wb-requests-table tr[data-current] td:first-child {
