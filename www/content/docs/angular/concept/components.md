@@ -134,7 +134,7 @@ const components = [
 
 ### Watch the props arrive
 
-The title uses an ordinary `s.string`. The steps use `s.streaming.array`, so resolved items can appear while the response is still arriving. Select **JSON** to follow the raw response, then **UI** to inspect resolved props. The **Resolved props** section follows that selection.
+The title uses an ordinary `s.string`. The steps use `s.streaming.array`, so resolved items can appear while the response is still arriving. The **UI** tab opens on **Streaming** to follow the raw response as it arrives, with **Schema** beside it. Resolved props are under **JSON** → **Resolved**; this lesson keeps **JSON** under **More**.
 
 A partial value is useful feedback. It is still a preview. The workbench enables **Accept plan** only after a fresh, successfully completed response passes its two-step plan rules. Rendering the card does not update the accepted plan.
 

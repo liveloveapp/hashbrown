@@ -14,6 +14,22 @@ const rows: readonly [string, string[], string[]][] = [
     ['Text', 'UI'],
   ],
   ['ui-kits', ['UI', 'Kit', 'Requests', 'State'], ['JSON', 'Schema']],
+  ['ui-chatbot', ['UI', 'Kit', 'Requests', 'State'], ['JSON', 'Schema']],
+  [
+    'interrupts',
+    ['Interrupts', 'Activities', 'Requests', 'State'],
+    ['Text', 'UI'],
+  ],
+  [
+    'message-history',
+    ['History', 'Saved text', 'Requests', 'State'],
+    ['Text', 'UI'],
+  ],
+  [
+    'save-text-conversations',
+    ['Saved text', 'History', 'Requests', 'State'],
+    ['Text', 'UI'],
+  ],
   [
     'activities',
     ['Activities', 'Interrupts', 'Requests', 'State'],

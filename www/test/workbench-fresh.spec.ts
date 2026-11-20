@@ -2,10 +2,10 @@ import { expect, test } from 'vitest';
 import type { WorkbenchFrame } from '../examples/quickstart/runtime/workbench';
 import {
   workbenchCardPath,
-  workbenchCardProps,
   workbenchFreshAt,
   workbenchFreshText,
   workbenchFreshWindow,
+  workbenchResolvedProps,
   workbenchSettleAt,
 } from '../examples/quickstart/runtime/workbench-fresh';
 
@@ -107,10 +107,50 @@ test('a streamed UI document path maps to the card field', () => {
   expect(workbenchCardPath('title')).toBe('title');
 });
 
-test('card props come from a UI document or a plain plan', () => {
-  const ui = { ui: [{ SummaryCard: { props: { title: 'T', steps: ['a'] } } }] };
+test('a later finished frame does not settle again', () => {
+  const events = [...streaming, frameOf(1, streaming[5].json, 'complete')];
 
-  expect(workbenchCardProps(ui)).toEqual({ title: 'T', steps: ['a'] });
-  expect(workbenchCardProps({ title: 'P' })).toEqual({ title: 'P' });
-  expect(workbenchCardProps({})).toBeNull();
+  expect(workbenchSettleAt(events, 5)).not.toBeNull();
+  expect(workbenchSettleAt(events, 6)).toBeNull();
+});
+
+function propsFrame(
+  props: WorkbenchFrame['props'],
+  status: WorkbenchFrame['status'] = 'loading',
+): WorkbenchFrame {
+  return { turn: 1, json: '', props, status } as WorkbenchFrame;
+}
+
+const resolving = [
+  propsFrame(null),
+  propsFrame({ title: 'Hashbrown' }),
+  propsFrame({ title: 'Hashbrown' }),
+  propsFrame({ title: 'Hashbrown' }),
+  propsFrame({ title: 'Hashbrown' }),
+  propsFrame({ title: 'Hashbrown', steps: ['Outline'] }),
+  propsFrame({ title: 'Hashbrown', steps: ['Outline'] }, 'complete'),
+];
+
+test('resolved props report the field that resolved within the window', () => {
+  const read = workbenchResolvedProps;
+
+  const fresh = workbenchFreshAt(resolving, 5, read);
+
+  expect(fresh).toEqual({ path: 'steps.0', text: 'Outline' });
+  expect(workbenchFreshAt(resolving, 1, read)).toEqual({
+    path: 'title',
+    text: 'Hashbrown',
+  });
+});
+
+test('resolved props that held still past the window report nothing', () => {
+  const fresh = workbenchFreshAt(resolving, 4, workbenchResolvedProps);
+
+  expect(fresh).toBeNull();
+});
+
+test('a completed frame settles the last resolved field', () => {
+  const settle = workbenchSettleAt(resolving, 6, workbenchResolvedProps);
+
+  expect(settle).toEqual({ path: 'steps.0', text: 'Outline' });
 });

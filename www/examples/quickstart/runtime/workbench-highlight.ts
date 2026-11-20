@@ -161,7 +161,7 @@ export function renderWorkbenchCode(
   return fragment;
 }
 
-const freshSentinel = '';
+const freshSentinel = '\uE000';
 
 function withSentinel(
   node: unknown,

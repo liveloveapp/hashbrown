@@ -69,3 +69,25 @@ test('a streamed UI document path maps to the card field', () => {
 
   expect(host.querySelector('[data-wb-fresh]')?.textContent).toBe('d');
 });
+
+test('a card from before the newest user message is never marked', () => {
+  const host = feed();
+  const user = document.createElement('p');
+  user.className = 'wb-user';
+  host.append(user);
+
+  markWorkbenchFresh(host, { path: 'steps.1', text: 'd' });
+
+  expect(host.querySelectorAll('[data-wb-fresh]')).toHaveLength(0);
+});
+
+test('the newest turn card after the newest user message is marked', () => {
+  const host = feed();
+  const user = document.createElement('p');
+  user.className = 'wb-user';
+  host.append(user, card(['e', 'f']));
+
+  markWorkbenchFresh(host, { path: 'steps.0', text: 'e' });
+
+  expect(host.querySelector('[data-wb-fresh]')?.textContent).toBe('e');
+});

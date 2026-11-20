@@ -336,12 +336,12 @@ body {
 }
 .wb .wb-conversations > [aria-pressed='true'],
 .wb-lessons > [aria-current='page'] {
-  background: var(--wb-cobalt-soft);
+  background: var(--wb-hover);
   color: var(--wb-cobalt);
 }
 .wb .wb-conversations > [aria-pressed='true']:hover:enabled,
 .wb-lessons > [aria-current='page']:hover {
-  background: var(--wb-cobalt-soft);
+  background: var(--wb-hover);
 }
 .wb-conversations .wb-icon,
 .wb-lessons .wb-icon {
@@ -1423,7 +1423,7 @@ body {
 }
 .wb .wb-player > button[aria-pressed='true'] {
   border-color: var(--wb-cobalt);
-  background: var(--wb-cobalt-soft);
+  background: var(--wb-hover);
   color: var(--wb-cobalt);
 }
 .wb .wb-transport .wb-play {

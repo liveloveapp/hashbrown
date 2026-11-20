@@ -19,9 +19,9 @@ import {
   workbenchCodeLanguage,
 } from './workbench-highlight';
 import {
-  workbenchCardProps,
   type WorkbenchFresh,
   workbenchFreshAt,
+  workbenchResolvedProps,
   workbenchSettleAt,
 } from './workbench-fresh';
 import { markWorkbenchFresh } from './workbench-fresh-mark';
@@ -88,7 +88,6 @@ import { attachWorkbenchScrub } from './workbench-scrub';
 import {
   createInspectorModeMemory,
   defaultInspectorMode,
-  parsePartialJson,
   workbenchInspectorModes,
   workbenchStateTree,
 } from './workbench-inspector-modes';
@@ -106,6 +105,7 @@ import {
 } from './workbench-timeline';
 import {
   isWorkbenchPlan,
+  type WorkbenchFrame,
   type WorkbenchSnapshot,
   type WorkbenchStore,
 } from './workbench';
@@ -1096,6 +1096,17 @@ export function mountWorkbench(
     readonly settle: boolean;
   } = { fresh: null, settle: false };
   const visibleFeed = () => (replay.hidden ? live : replay);
+  let renderedInspection: {
+    readonly cursor: number;
+    readonly tab: string;
+    readonly mode: string;
+    readonly value: string | undefined;
+    readonly block: HTMLPreElement;
+  } | null = null;
+  let renderedReplay: {
+    readonly frame: WorkbenchFrame | null;
+    readonly lesson: string | undefined;
+  } = { frame: null, lesson: undefined };
   function applyChatFresh() {
     markWorkbenchFresh(replay.hidden ? replay : live, null);
     markWorkbenchFresh(visibleFeed(), chatFresh.fresh, {
@@ -1234,8 +1245,15 @@ export function mountWorkbench(
           : 'Recorded'
         : `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
     if (status.textContent !== statusText) status.textContent = statusText;
-    replay.replaceChildren();
-    if (historical && !commands.managedChat) {
+    // Rebuild the replay feed only when what it shows changes, so a
+    // re-render on the same frame keeps the cards and any running fade.
+    const replayFrame = historical && !commands.managedChat ? frame : null;
+    const replayChanged =
+      replayFrame !== renderedReplay.frame ||
+      commands.lesson?.id !== renderedReplay.lesson;
+    renderedReplay = { frame: replayFrame, lesson: commands.lesson?.id };
+    if (replayChanged) replay.replaceChildren();
+    if (replayChanged && replayFrame) {
       if (commands.lesson?.format === 'decision') {
         const plan = element('article', '', 'wb-summary');
         plan.setAttribute('aria-label', 'Application plan');
@@ -1246,14 +1264,7 @@ export function mountWorkbench(
         plan.append(element('h2', workbenchDecisionPlan.title), steps);
         replay.append(plan);
       }
-      const messages = frame?.messages ?? [];
-      // The card follows the same parsed value as the Streaming view.
-      const streamedProps =
-        (commands.lesson?.id === 'generative-ui' ||
-          commands.lesson?.id === 'first-plan') &&
-        frame?.json
-          ? workbenchCardProps(parsePartialJson(frame.json))
-          : null;
+      const messages = replayFrame.messages;
       for (const message of messages) {
         if (message.role === 'user') {
           replay.append(element('p', message.content, 'wb-user'));
@@ -1276,16 +1287,10 @@ export function mountWorkbench(
           replay.append(element('p', message.content, 'wb-assistant'));
           continue;
         }
-        const props =
-          message === messages.at(-1) && streamedProps
-            ? streamedProps
-            : message.props;
-        if (!props) continue;
-        replay.append(planCard(props));
+        // Resolved props: the card shows only what the component receives.
+        if (!message.props) continue;
+        replay.append(planCard(message.props));
       }
-      // The streamed card can exist before its message is captured.
-      if (streamedProps && messages.at(-1)?.role === 'user')
-        replay.append(planCard(streamedProps));
     }
     syncTabs();
     inspectorTabs.sync(
@@ -1539,18 +1544,35 @@ export function mountWorkbench(
                     ? 'Application state'
                     : 'Requests and tools');
     const selectedIndex = snapshot.cursor ?? snapshot.events.length - 1;
+    // Computed once per render. The inspector marks the raw stream; the chat
+    // marks resolved props, since that is what the card receives.
+    const streamSettle = workbenchSettleAt(snapshot.events, selectedIndex);
+    const streamFresh = streamSettle
+      ? { fresh: streamSettle, settle: true }
+      : {
+          fresh: workbenchFreshAt(snapshot.events, selectedIndex),
+          settle: false,
+        };
     {
       const marksChat =
         commands.lesson?.id === 'generative-ui' ||
         commands.lesson?.id === 'first-plan';
       const settled = marksChat
-        ? workbenchSettleAt(snapshot.events, selectedIndex)
+        ? workbenchSettleAt(
+            snapshot.events,
+            selectedIndex,
+            workbenchResolvedProps,
+          )
         : null;
       chatFresh = settled
         ? { fresh: settled, settle: true }
         : {
             fresh: marksChat
-              ? workbenchFreshAt(snapshot.events, selectedIndex)
+              ? workbenchFreshAt(
+                  snapshot.events,
+                  selectedIndex,
+                  workbenchResolvedProps,
+                )
               : null,
             settle: false,
           };
@@ -1707,7 +1729,6 @@ export function mountWorkbench(
         format: commands.lesson?.format,
         endpoint: commands.lesson?.endpoint,
         source: snapshot.readOnly ? '' : sourceLabel,
-        flag: snapshot.events.length ? (activeMilestone?.label ?? '') : '',
       });
     const bottomHeading =
       recipeView?.detailHeading ??
@@ -1823,29 +1844,46 @@ export function mountWorkbench(
           .forEach((node) => node.remove());
         if (stateTree.element.parentNode !== inspection)
           inspection.prepend(stateTree.element);
-      } else
-        rebuildKeepingFocus(inspection, 'data-sequence', () => {
-          const block = pre(mode.value ?? undefined, tab);
-          if (
-            mode.id === 'streaming' &&
-            mode.value !== null &&
-            mode.value !== undefined &&
-            block.dataset.language === 'json'
-          )
-            block.replaceChildren(
-              workbenchSettleAt(snapshot.events, selectedIndex)
-                ? renderWorkbenchFreshJson(
-                    mode.value,
-                    workbenchSettleAt(snapshot.events, selectedIndex),
-                    { settle: true },
-                  )
-                : renderWorkbenchFreshJson(
-                    mode.value,
-                    workbenchFreshAt(snapshot.events, selectedIndex),
-                  ),
-            );
-          inspection.replaceChildren(block);
-        });
+      } else {
+        // Keep the block when nothing it shows changed, so a re-render on
+        // the same frame does not restart the fresh mark's fade.
+        const shown = {
+          cursor: selectedIndex,
+          tab,
+          mode: mode.id,
+          value:
+            typeof mode.value === 'string'
+              ? mode.value
+              : JSON.stringify(mode.value),
+        };
+        const unchanged =
+          renderedInspection !== null &&
+          inspection.firstChild === renderedInspection.block &&
+          renderedInspection.cursor === shown.cursor &&
+          renderedInspection.tab === shown.tab &&
+          renderedInspection.mode === shown.mode &&
+          renderedInspection.value === shown.value;
+        if (unchanged)
+          while (inspection.lastChild !== renderedInspection?.block)
+            inspection.lastChild?.remove();
+        else
+          rebuildKeepingFocus(inspection, 'data-sequence', () => {
+            const block = pre(mode.value ?? undefined, tab);
+            if (
+              mode.id === 'streaming' &&
+              mode.value !== null &&
+              mode.value !== undefined &&
+              block.dataset.language === 'json'
+            )
+              block.replaceChildren(
+                renderWorkbenchFreshJson(mode.value, streamFresh.fresh, {
+                  settle: streamFresh.settle,
+                }),
+              );
+            inspection.replaceChildren(block);
+            renderedInspection = { ...shown, block };
+          });
+      }
     const failed = (frame?.status ?? snapshot.status) === 'error';
     const issueText =
       commands.lesson?.format === 'workflow' &&

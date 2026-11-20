@@ -46,7 +46,7 @@ The local server uses the real OpenAI adapter, keeps the model and output limit 
 
 ## Choose one teaching focus
 
-The collapsible sidebar opens twenty-eight lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
+The sidebar starts as an icon rail; select the rail button (or press Cmd+B or Ctrl+B) to open twenty-eight lessons under Get started, Concepts, Production, and Recipes over the chat. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
 
 The lessons are:
 
@@ -115,7 +115,7 @@ Focus the bottom scrubber to use its native arrow, Home, and End keys. Its acces
 
 The Requests tab is a table of requests grouped by turn. It follows the player's playhead, so use the bottom scrubber to move through the run. Each row shows status, start, duration, events, and a waterfall, and tool calls sit under the request that called them. Select a request to open Overview, Messages, Tools, State, Raw request (as captured), and Response (every streamed event). Tool rows show Call, Result, and Raw. A failed HTTP request shows Overview and Raw. Press Escape or select **Close request detail** to go back to the table.
 
-**New conversation** at the top of the sidebar starts an independent session; select a session under Conversations to return to it. The sidebar toggle (Cmd+B or Ctrl+B) collapses it to an icon rail. Sessions are kept in memory and clear on refresh.
+**New conversation** at the top of the lesson list starts an independent session; select a session under Conversations to return to it. Select **Keep open** to pin the list beside the chat. Sessions are kept in memory and clear on refresh.
 
 ## Read the code
 

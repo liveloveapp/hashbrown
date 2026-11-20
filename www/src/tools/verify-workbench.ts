@@ -1,5 +1,6 @@
 import {
   readApplicationState,
+  readInspectorJson,
   showInspectorMode,
 } from './verify-inspector-modes';
 import { saveWorkbenchCapture } from './workbench-capture-file';
@@ -1338,18 +1339,21 @@ try {
       if (process.env['WORKBENCH_RECORD'] === '1')
         await page.waitForTimeout(700);
       if (!live && lesson.id === 'generative-ui') {
-        // The newest streamed text lights up in the UI tab's JSON and in the chat card.
+        // The newest streamed text lights up in the UI tab's JSON; the chat
+        // card marks a field when its resolved prop changes.
         await selectInspectorTab(page, 'UI');
         await showInspectorMode(page.locator('.wb:visible'), 'streaming');
         const seek = page.getByRole('slider', { name: 'Seek captured event' });
         const streamingMark = '.wb:visible mark.wb-fresh:not(.wb-fresh-settle)';
         const chatMark = '.wb:visible [data-wb-fresh=""]';
-        // Both views render from the same frame, so the marked chat element
-        // holds the value at the marked path and ends with the marked text.
-        const expectLinkedMarks = async () => {
+        const expectStreamingMark = async () => {
           await expect(page.locator(streamingMark)).toHaveCount(1);
-          await expect(page.locator(chatMark)).toHaveCount(1);
           const text = await page.locator(streamingMark).innerText();
+          expect(text.length).toBeGreaterThan(0);
+        };
+        // The marked chat element holds the resolved value at its path.
+        const expectResolvedChatMark = async () => {
+          await expect(page.locator(chatMark)).toHaveCount(1);
           const linked = await page.locator(chatMark).evaluate((node) => ({
             text: node.textContent ?? '',
             path:
@@ -1357,29 +1361,34 @@ try {
                 ? 'title'
                 : `steps.${[...(node.parentElement?.children ?? [])].indexOf(node)}`,
           }));
-          const document = JSON.parse(
-            await page
-              .locator('.wb:visible .wb-inspection pre')
-              .first()
-              .innerText(),
-          ) as { ui: { SummaryCard: { props: Record<string, unknown> } }[] };
-          const props = document.ui[0].SummaryCard.props;
+          await selectInspectorTab(page, 'JSON');
+          const props = (await readInspectorJson(
+            page.locator('.wb:visible'),
+            'resolved',
+          )) as { title?: string; steps?: string[] };
           const value =
             linked.path === 'title'
-              ? props['title']
-              : (props['steps'] as string[])[Number(linked.path.slice(6))];
-          expect(text.length).toBeGreaterThan(0);
+              ? props.title
+              : props.steps?.[Number(linked.path.slice(6))];
+          expect(linked.text.length).toBeGreaterThan(0);
           expect(linked.text).toBe(value);
-          expect(linked.text.endsWith(text)).toBe(true);
+          await selectInspectorTab(page, 'UI');
+          await showInspectorMode(page.locator('.wb:visible'), 'streaming');
         };
         await seek.press('End');
         for (let step = 0; step < 24; step += 1) {
           await seek.press('ArrowLeft');
           if (await page.locator(streamingMark).count()) break;
         }
-        await expectLinkedMarks();
+        await expectStreamingMark();
         for (let step = 0; step < 3; step += 1) await seek.press('ArrowLeft');
-        await expectLinkedMarks();
+        await expectStreamingMark();
+        await seek.press('End');
+        for (let step = 0; step < 24; step += 1) {
+          await seek.press('ArrowLeft');
+          if (await page.locator(chatMark).count()) break;
+        }
+        await expectResolvedChatMark();
         await seek.press('End');
         await expect(page.locator(streamingMark)).toHaveCount(0);
         await expect(page.locator(chatMark)).toHaveCount(0);

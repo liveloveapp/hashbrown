@@ -69,58 +69,81 @@ export function workbenchFreshText(
   return changed[changed.length - 1] ?? null;
 }
 
+/** Reads the value of a captured event that fresh text is measured on. */
+export type WorkbenchFreshRead = (event: WorkbenchFrame) => unknown;
+
 /**
- * Finds the text that streamed in just before a captured event.
+ * Reads the raw streamed JSON of an event, parsed as far as it has arrived.
+ * This is what the inspector's Streaming view shows.
  *
- * Compares the partial JSON at `cursor` with the one at the later of the
- * turn's first event and `workbenchFreshWindow` events back. The first event
- * of a turn compares against nothing. Finished events have no fresh text.
+ * @param event - A captured event.
+ * @returns The parsed partial document.
+ */
+export const workbenchStreamedJson: WorkbenchFreshRead = (event) =>
+  parsePartialJson(event.json);
+
+/**
+ * Reads the props Hashbrown resolved for an event. This is what the rendered
+ * component receives, so a field appears here only once it has resolved.
+ *
+ * @param event - A captured event.
+ * @returns The resolved props, or `null` before any resolve.
+ */
+export const workbenchResolvedProps: WorkbenchFreshRead = (event) =>
+  event.props;
+
+/**
+ * Finds the text that arrived just before a captured event.
+ *
+ * Compares the value `read` returns at `cursor` with the one at the later of
+ * the turn's first event and `workbenchFreshWindow` events back. The first
+ * event of a turn compares against nothing. Finished events have no fresh
+ * text.
  *
  * @param events - The captured events.
  * @param cursor - The index of the event being shown.
+ * @param read - Which value to compare; defaults to the streamed JSON.
  * @returns The newest arrived text, or `null` when finished or unchanged.
  */
 export function workbenchFreshAt(
   events: readonly WorkbenchFrame[],
   cursor: number,
+  read: WorkbenchFreshRead = workbenchStreamedJson,
 ): WorkbenchFresh | null {
   const event = events[cursor];
-  if (!event || event.status === 'complete' || event.status === 'error') {
-    return null;
-  }
+  if (!event || finished(event)) return null;
   let first = cursor;
   while (first > 0 && events[first - 1].turn === event.turn) first -= 1;
   const start = Math.max(first, cursor - workbenchFreshWindow);
-  const previous =
-    start === cursor ? undefined : parsePartialJson(events[start].json);
-  return workbenchFreshText(previous, parsePartialJson(event.json));
+  const previous = start === cursor ? undefined : read(events[start]);
+  return workbenchFreshText(previous, read(event));
+}
+
+function finished(event: WorkbenchFrame): boolean {
+  return event.status === 'complete' || event.status === 'error';
 }
 
 /**
- * Finds the text to fade out on a finished event: the fresh text of the last
- * streaming frame earlier in the same turn. Unfinished events and turns with
- * no earlier streaming frame have none.
+ * Finds the text to fade out on a finished event: the fresh text of the
+ * streaming frame just before it in the same turn. Only the first finished
+ * event after the stream settles; later finished events (such as an accept)
+ * and unfinished events have none, so the fade plays once.
  *
  * @param events - The captured events.
  * @param cursor - The index of the event being shown.
+ * @param read - Which value to compare; defaults to the streamed JSON.
  * @returns The text to show once more as a settling mark, or `null`.
  */
 export function workbenchSettleAt(
   events: readonly WorkbenchFrame[],
   cursor: number,
+  read: WorkbenchFreshRead = workbenchStreamedJson,
 ): WorkbenchFresh | null {
   const event = events[cursor];
-  if (!event || (event.status !== 'complete' && event.status !== 'error')) {
-    return null;
-  }
-  for (let index = cursor - 1; index >= 0; index -= 1) {
-    const earlier = events[index];
-    if (earlier.turn !== event.turn) return null;
-    if (earlier.status !== 'complete' && earlier.status !== 'error') {
-      return workbenchFreshAt(events, index);
-    }
-  }
-  return null;
+  const before = events[cursor - 1];
+  if (!event || !finished(event)) return null;
+  if (!before || before.turn !== event.turn || finished(before)) return null;
+  return workbenchFreshAt(events, cursor - 1, read);
 }
 
 /**
@@ -135,33 +158,4 @@ export function workbenchSettleAt(
  */
 export function workbenchCardPath(path: string): string {
   return path.replace(/^ui\.\d+\.[^.]+\.props\./, '');
-}
-
-/**
- * Reads the plan card fields from a streamed JSON document, so a card can
- * render from the same parsed value the Streaming view shows.
- *
- * @param value - The parsed partial document.
- * @returns The title and steps found, or `null` when there are none.
- */
-export function workbenchCardProps(
-  value: unknown,
-): { title?: string; steps?: string[] } | null {
-  const object = (node: unknown) =>
-    node !== null && typeof node === 'object' && !Array.isArray(node)
-      ? (node as Record<string, unknown>)
-      : undefined;
-  const root = object(value);
-  const ui = Array.isArray(root?.['ui']) ? object(root['ui'][0]) : undefined;
-  const component = ui ? object(Object.values(ui)[0]) : undefined;
-  const props = object(component?.['props']) ?? root;
-  if (!props) return null;
-  const steps = Array.isArray(props['steps'])
-    ? props['steps'].filter((step): step is string => typeof step === 'string')
-    : undefined;
-  const result = {
-    ...(typeof props['title'] === 'string' ? { title: props['title'] } : {}),
-    ...(steps ? { steps } : {}),
-  };
-  return Object.keys(result).length > 0 ? result : null;
 }

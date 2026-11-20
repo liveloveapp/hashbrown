@@ -20,8 +20,6 @@ export interface WorkbenchRequestsViewInput {
   readonly endpoint?: string;
   /** The provenance label, such as "Live model". */
   readonly source: string;
-  /** The player's flag text; unused now that the player is the only scrubber. */
-  readonly flag?: string;
 }
 
 /** The inspector's Requests tab: picker, table and detail pane. */
@@ -332,13 +330,14 @@ function heading(value: string): HTMLHeadingElement {
 
 /**
  * Creates the Requests view: a table of request and tool exchanges grouped by
- * turn, and a detail pane with tabs that apply to the selected row. The detail follows the playhead, showing the
- * exchange under it, until the reader picks a row; the next cursor move that
- * the view did not make resumes following. A narrow inspector hides the strip
- * and the table and offers the rows from a header picker instead. Selection,
- * the open detail tab and the selected response event live in this closure,
- * so they survive the shell's re-renders. While live, an HTTP error is
- * selected automatically unless the user has already picked a row.
+ * turn, and a detail pane with tabs that apply to the selected row. The
+ * detail follows the playhead, showing the exchange under it, until the
+ * reader picks a row; the next cursor move that the view did not make resumes
+ * following. A narrow inspector hides the table and offers the rows from a
+ * header picker instead. Selection, the open detail tab and the selected
+ * response event live in this closure, so they survive the shell's
+ * re-renders. While live, an HTTP error is selected automatically unless the
+ * user has already picked a row.
  *
  * @param options - The instance id and the seek callback.
  * @returns The view element, `update` for each store change and `dispose`.

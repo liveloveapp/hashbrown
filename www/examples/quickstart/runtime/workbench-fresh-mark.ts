@@ -9,9 +9,26 @@ function fieldElement(card: Element | undefined, path: string) {
     : null;
 }
 
+function newestTurnCard(feed: HTMLElement): Element | undefined {
+  const users = feed.querySelectorAll('.wb-user');
+  const user = users[users.length - 1];
+  const cards = [...feed.querySelectorAll('.wb-summary')].filter(
+    (card) =>
+      !user ||
+      (user.compareDocumentPosition(card) &
+        Node.DOCUMENT_POSITION_FOLLOWING) !==
+        0,
+  );
+  return cards[cards.length - 1];
+}
+
 /**
  * Marks the element for `fresh.path` in the newest `.wb-summary` card in
  * `feed` with `data-wb-fresh`, and clears it everywhere else.
+ *
+ * Only a card after the newest `.wb-user` message counts, so while a new
+ * turn's card has not mounted yet nothing is marked rather than the previous
+ * turn's card.
  *
  * The title is the card's `h2` and `steps.N` is its Nth `ol > li`. The
  * attribute is `""` while text streams and `"settle"` when the mark is fading
@@ -26,9 +43,8 @@ export function markWorkbenchFresh(
   fresh: WorkbenchFresh | null,
   options: { readonly settle?: boolean } = {},
 ): void {
-  const cards = feed.querySelectorAll('.wb-summary');
   const target = fresh
-    ? fieldElement(cards[cards.length - 1], workbenchCardPath(fresh.path))
+    ? fieldElement(newestTurnCard(feed), workbenchCardPath(fresh.path))
     : null;
   const value = options.settle ? 'settle' : '';
   feed.querySelectorAll<HTMLElement>('[data-wb-fresh]').forEach((node) => {
