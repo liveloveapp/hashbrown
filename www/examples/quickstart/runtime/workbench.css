@@ -2112,5 +2112,27 @@ mark.wb-fresh {
   color: inherit;
   border-radius: 1px;
   box-shadow: 0 0 0 2px var(--wb-cobalt-soft);
-  transition: background 400ms;
+}
+
+mark.wb-fresh-settle {
+  animation: wb-fresh-settle 400ms forwards;
+}
+
+@keyframes wb-fresh-settle {
+  from {
+    background: var(--wb-cobalt-soft);
+    box-shadow: 0 0 0 2px var(--wb-cobalt-soft);
+  }
+  to {
+    background: transparent;
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  mark.wb-fresh-settle {
+    animation: none;
+    background: transparent;
+    box-shadow: none;
+  }
 }

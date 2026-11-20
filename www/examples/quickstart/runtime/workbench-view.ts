@@ -18,7 +18,7 @@ import {
   renderWorkbenchFreshJson,
   workbenchCodeLanguage,
 } from './workbench-highlight';
-import { workbenchFreshAt } from './workbench-fresh';
+import { workbenchFreshAt, workbenchSettleAt } from './workbench-fresh';
 import {
   isWorkbenchWorkflowProgress,
   workbenchWorkflowPrompts,
@@ -1766,10 +1766,16 @@ export function mountWorkbench(
             block.dataset.language === 'json'
           )
             block.replaceChildren(
-              renderWorkbenchFreshJson(
-                mode.value,
-                workbenchFreshAt(snapshot.events, selectedIndex),
-              ),
+              workbenchSettleAt(snapshot.events, selectedIndex)
+                ? renderWorkbenchFreshJson(
+                    mode.value,
+                    workbenchSettleAt(snapshot.events, selectedIndex),
+                    { settle: true },
+                  )
+                : renderWorkbenchFreshJson(
+                    mode.value,
+                    workbenchFreshAt(snapshot.events, selectedIndex),
+                  ),
             );
           inspection.replaceChildren(block);
         });

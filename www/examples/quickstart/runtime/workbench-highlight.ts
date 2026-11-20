@@ -198,10 +198,12 @@ function withSentinel(
  *
  * @param value - The (partial) value to show.
  * @param fresh - The newest arrived text, or `null` for no mark.
+ * @param options - `settle` adds `wb-fresh-settle`, which fades the mark out.
  */
 export function renderWorkbenchFreshJson(
   value: unknown,
   fresh: { readonly path: string; readonly text: string } | null,
+  options: { readonly settle?: boolean } = {},
 ): DocumentFragment {
   const plain = JSON.stringify(value, null, 2);
   if (!fresh || fresh.text === '') return renderWorkbenchCode(plain, 'json');
@@ -222,7 +224,7 @@ export function renderWorkbenchFreshJson(
       const after = token.text.slice(at + 1);
       const closed = after.endsWith('"');
       const mark = document.createElement('mark');
-      mark.className = 'wb-fresh';
+      mark.className = options.settle ? 'wb-fresh wb-fresh-settle' : 'wb-fresh';
       mark.textContent = closed ? after.slice(0, -1) : after;
       node.push(
         document.createTextNode(before),

@@ -95,3 +95,30 @@ export function workbenchFreshAt(
     start === cursor ? undefined : parsePartialJson(events[start].json);
   return workbenchFreshText(previous, parsePartialJson(event.json));
 }
+
+/**
+ * Finds the text to fade out on a finished event: the fresh text of the last
+ * streaming frame earlier in the same turn. Unfinished events and turns with
+ * no earlier streaming frame have none.
+ *
+ * @param events - The captured events.
+ * @param cursor - The index of the event being shown.
+ * @returns The text to show once more as a settling mark, or `null`.
+ */
+export function workbenchSettleAt(
+  events: readonly WorkbenchFrame[],
+  cursor: number,
+): WorkbenchFresh | null {
+  const event = events[cursor];
+  if (!event || (event.status !== 'complete' && event.status !== 'error')) {
+    return null;
+  }
+  for (let index = cursor - 1; index >= 0; index -= 1) {
+    const earlier = events[index];
+    if (earlier.turn !== event.turn) return null;
+    if (earlier.status !== 'complete' && earlier.status !== 'error') {
+      return workbenchFreshAt(events, index);
+    }
+  }
+  return null;
+}

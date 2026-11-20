@@ -182,3 +182,17 @@ test('text with quotes and escapes is marked correctly', () => {
     'say \\"hi\\"\\n',
   );
 });
+
+test('a settling mark carries the settle class', () => {
+  const value = { a: 'Hello' };
+
+  const fragment = renderWorkbenchFreshJson(
+    value,
+    { path: 'a', text: 'llo' },
+    { settle: true },
+  );
+
+  const mark = fragment.querySelector('mark')!;
+  expect(mark.className).toBe('wb-fresh wb-fresh-settle');
+  expect(mark.textContent).toBe('llo');
+});

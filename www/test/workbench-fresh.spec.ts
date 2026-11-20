@@ -4,6 +4,7 @@ import {
   workbenchFreshAt,
   workbenchFreshText,
   workbenchFreshWindow,
+  workbenchSettleAt,
 } from '../examples/quickstart/runtime/workbench-fresh';
 
 function frameOf(
@@ -81,4 +82,18 @@ test('the window never reaches into the previous turn', () => {
 
 test('an out of range cursor reports nothing', () => {
   expect(workbenchFreshAt(streaming, 99)).toBeNull();
+});
+
+test('a completed frame settles the last streamed text', () => {
+  const settle = workbenchSettleAt(streaming, 5);
+
+  expect(settle).toEqual(workbenchFreshAt(streaming, 4));
+  expect(settle).not.toBeNull();
+});
+
+test('a streaming frame or a lone completed frame has nothing to settle', () => {
+  const lone = [frameOf(1, '{"a":"x"}', 'complete')];
+
+  expect(workbenchSettleAt(streaming, 2)).toBeNull();
+  expect(workbenchSettleAt(lone, 0)).toBeNull();
 });
