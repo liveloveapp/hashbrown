@@ -160,3 +160,83 @@ export function renderWorkbenchCode(
   }
   return fragment;
 }
+
+const freshSentinel = '';
+
+function withSentinel(
+  node: unknown,
+  keys: readonly string[],
+  text: string,
+): unknown {
+  const [key, ...rest] = keys;
+  if (key === undefined) {
+    if (typeof node !== 'string') return node;
+    const at = Math.max(0, node.length - text.length);
+    return node.slice(0, at) + freshSentinel + node.slice(at);
+  }
+  if (Array.isArray(node)) {
+    return node.map((item, index) =>
+      String(index) === key ? withSentinel(item, rest, text) : item,
+    );
+  }
+  if (node !== null && typeof node === 'object') {
+    return Object.fromEntries(
+      Object.entries(node).map(([name, item]) => [
+        name,
+        name === key ? withSentinel(item, rest, text) : item,
+      ]),
+    );
+  }
+  return node;
+}
+
+/**
+ * Renders a value as highlighted, pretty-printed JSON and marks the text that
+ * just streamed in. The last `fresh.text.length` characters of the string at
+ * `fresh.path` are wrapped in `mark.wb-fresh`; `textContent` is the same as
+ * rendering the JSON without a mark.
+ *
+ * @param value - The (partial) value to show.
+ * @param fresh - The newest arrived text, or `null` for no mark.
+ */
+export function renderWorkbenchFreshJson(
+  value: unknown,
+  fresh: { readonly path: string; readonly text: string } | null,
+): DocumentFragment {
+  const plain = JSON.stringify(value, null, 2);
+  if (!fresh || fresh.text === '') return renderWorkbenchCode(plain, 'json');
+  const marked = JSON.stringify(
+    withSentinel(value, fresh.path.split('.'), fresh.text),
+    null,
+    2,
+  );
+  if (!marked.includes(freshSentinel) || marked.length !== plain.length + 1)
+    return renderWorkbenchCode(plain, 'json');
+  const fragment = document.createDocumentFragment();
+  for (const token of tokenizeJson(marked)) {
+    const at = token.text.indexOf(freshSentinel);
+    const node: Node[] = [];
+    if (at < 0) node.push(document.createTextNode(token.text));
+    else {
+      const before = token.text.slice(0, at);
+      const after = token.text.slice(at + 1);
+      const closed = after.endsWith('"');
+      const mark = document.createElement('mark');
+      mark.className = 'wb-fresh';
+      mark.textContent = closed ? after.slice(0, -1) : after;
+      node.push(
+        document.createTextNode(before),
+        mark,
+        ...(closed ? [document.createTextNode('"')] : []),
+      );
+    }
+    if (token.kind === 'plain') fragment.append(...node);
+    else {
+      const span = document.createElement('span');
+      span.className = `wb-tok-${token.kind}`;
+      span.append(...node);
+      fragment.append(span);
+    }
+  }
+  return fragment;
+}

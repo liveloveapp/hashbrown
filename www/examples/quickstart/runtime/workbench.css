@@ -2106,3 +2106,11 @@ app-workflow-workbench-conversation[hidden] {
   flex-wrap: wrap;
   gap: var(--wb-space-2);
 }
+
+mark.wb-fresh {
+  background: var(--wb-cobalt-soft);
+  color: inherit;
+  border-radius: 1px;
+  box-shadow: 0 0 0 2px var(--wb-cobalt-soft);
+  transition: background 400ms;
+}

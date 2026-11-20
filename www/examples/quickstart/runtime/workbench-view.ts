@@ -15,8 +15,10 @@ import {
 } from './workbench-history';
 import {
   renderWorkbenchCode,
+  renderWorkbenchFreshJson,
   workbenchCodeLanguage,
 } from './workbench-highlight';
+import { workbenchFreshAt } from './workbench-fresh';
 import {
   isWorkbenchWorkflowProgress,
   workbenchWorkflowPrompts,
@@ -1756,7 +1758,20 @@ export function mountWorkbench(
           inspection.prepend(stateTree.element);
       } else
         rebuildKeepingFocus(inspection, 'data-sequence', () => {
-          inspection.replaceChildren(pre(mode.value ?? undefined, tab));
+          const block = pre(mode.value ?? undefined, tab);
+          if (
+            mode.id === 'streaming' &&
+            mode.value !== null &&
+            mode.value !== undefined &&
+            block.dataset.language === 'json'
+          )
+            block.replaceChildren(
+              renderWorkbenchFreshJson(
+                mode.value,
+                workbenchFreshAt(snapshot.events, selectedIndex),
+              ),
+            );
+          inspection.replaceChildren(block);
         });
     const failed = (frame?.status ?? snapshot.status) === 'error';
     const issueText =
