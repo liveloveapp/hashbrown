@@ -54,7 +54,7 @@
     "hast-util-to-jsx-runtime": "2.3.6",
     "hono": "4.13.13",
     "leaflet": "^1.9.4",
-    "next": "16.4.2",
+    "next": "16.4.6",
     "ollama": "0.6.4",
     "posthog-js": "1.438.12",
     "quickjs-emscripten-core": "0.32.0",
