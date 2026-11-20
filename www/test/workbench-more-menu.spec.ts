@@ -80,3 +80,33 @@ test('a populated list shows the More button', () => {
   expect(menu.element.hidden).toBe(false);
   expect(trigger.textContent).toContain('More');
 });
+
+test('syncing the same items keeps focus on the open menu item', () => {
+  const { menu, trigger, items } = mountMenu();
+  trigger.click();
+  items()[1].focus();
+
+  menu.sync(['JSON', 'Schema', 'Text']);
+
+  expect(document.activeElement).toBe(items()[1]);
+  expect(trigger.getAttribute('aria-expanded')).toBe('true');
+});
+
+test('Escape on the More button closes an open menu', () => {
+  const { trigger } = mountMenu();
+  trigger.click();
+
+  press(trigger, 'Escape');
+
+  expect(trigger.getAttribute('aria-expanded')).toBe('false');
+});
+
+test('dispose removes the outside-click listener', () => {
+  const { menu, trigger } = mountMenu();
+  trigger.click();
+  menu.dispose();
+
+  document.body.click();
+
+  expect(trigger.getAttribute('aria-expanded')).toBe('true');
+});

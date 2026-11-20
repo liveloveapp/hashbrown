@@ -120,7 +120,7 @@ function mountForLesson(id: string) {
   const store = createWorkbenchStore();
   const host = document.createElement('div');
   document.body.replaceChildren(host);
-  mountWorkbench(
+  const shell = mountWorkbench(
     host,
     store,
     {
@@ -137,7 +137,7 @@ function mountForLesson(id: string) {
     },
     { embed: 'live' },
   );
-  return { host, store };
+  return { host, store, dispose: shell.dispose };
 }
 
 function tabNames(shell: { host: HTMLElement }) {
@@ -218,4 +218,29 @@ test('a consumer-supplied tab list bypasses the rule and has no More menu', () =
   expect(host.querySelector<HTMLElement>('.wb-more')?.hidden ?? true).toBe(
     true,
   );
+});
+
+test('an open More menu keeps focus on its item when the inspector re-renders', () => {
+  const shell = mountForLesson('tools');
+  const trigger = shell.host.querySelector<HTMLElement>('.wb-more-button');
+  trigger?.click();
+  const item = shell.host.querySelector<HTMLElement>(
+    '.wb-more [role=menuitem]',
+  );
+  item?.focus();
+
+  shell.store.seek(0);
+
+  expect(document.activeElement).toBe(item);
+  shell.dispose();
+});
+
+test('choosing from More moves focus to the promoted tab', () => {
+  const shell = mountForLesson('generative-ui');
+
+  chooseMore(shell, 'JSON');
+
+  expect(document.activeElement?.textContent).toBe('JSON');
+  expect(document.activeElement?.getAttribute('role')).toBe('tab');
+  shell.dispose();
 });

@@ -174,7 +174,15 @@ export async function measureWorkbenchAlignment(
     // 1. Chat head and inspector tab row: same height, level bottoms.
     const head = chat.querySelector('.wb-panel-head');
     const tabs = inspector.querySelector('.wb-tabs-row');
-    if (visible(head) && visible(tabs)) {
+    // A row whose mode toggle wrapped under the tabs is taller than the head;
+    // the single-row alignments below then do not apply.
+    const wrapped =
+      visible(tabs) &&
+      visible(tabs.querySelector('[role="tab"]')) &&
+      visible(tabs.querySelector('.wb-segmented')) &&
+      rect(tabs.querySelector('.wb-segmented') as Element).top >=
+        rect(tabs.querySelector('[role="tab"]') as Element).bottom - 1;
+    if (visible(head) && visible(tabs) && !wrapped) {
       expectNear('head heights (chat, tabs)', [
         rect(head).height,
         rect(tabs).height,
@@ -183,7 +191,8 @@ export async function measureWorkbenchAlignment(
         rect(head).bottom,
         rect(tabs).bottom,
       ]);
-    } else failures.push('missing chat head or inspector tabs');
+    } else if (!visible(head) || !visible(tabs))
+      failures.push('missing chat head or inspector tabs');
 
     // 2. One inner left edge per panel.
     const chatEdge = innerLeft(chat) + pad;
@@ -229,7 +238,7 @@ export async function measureWorkbenchAlignment(
     const selectedTab = tabs?.querySelector(
       '[role="tab"][aria-selected="true"]',
     );
-    if (visible(toggle) && visible(selectedTab))
+    if (visible(toggle) && visible(selectedTab) && !wrapped)
       expectNear('tab row centres (selected tab, toggle)', [
         rect(selectedTab).top + rect(selectedTab).height / 2,
         rect(toggle).top + rect(toggle).height / 2,
@@ -506,17 +515,26 @@ export async function verifyEmbedTabsRowFits(options: {
         row.getByRole('button', { name: 'More', exact: true }),
       ).toBeVisible();
       await expect(row.getByRole('tab')).toHaveCount(4);
-      const [scroll, client] = await row.evaluate((node) => [
-        node.scrollWidth,
-        node.clientWidth,
-      ]);
-      expect(scroll, `${lesson} tab row scrolls sideways`).toBeLessThanOrEqual(
-        client,
+      // Neither the row nor the tablist may hide a tab behind a scroll.
+      const [rowScroll, rowClient, tabsScroll, tabsClient] = await row.evaluate(
+        (node) => {
+          const tablist = node.querySelector('.wb-tabs') as HTMLElement;
+          return [
+            node.scrollWidth,
+            node.clientWidth,
+            tablist.scrollWidth,
+            tablist.clientWidth,
+          ];
+        },
       );
-      // The tablist may scroll as a fallback when its lesson has wide modes.
-      // One line: a wrapped row would be taller than a single tab.
-      const height = (await row.boundingBox())?.height ?? Infinity;
-      expect(height, `${lesson} tab row wraps`).toBeLessThanOrEqual(48);
+      expect(
+        rowScroll,
+        `${lesson} tab row scrolls sideways`,
+      ).toBeLessThanOrEqual(rowClient);
+      expect(
+        tabsScroll,
+        `${lesson} tablist scrolls sideways`,
+      ).toBeLessThanOrEqual(tabsClient);
       await expectNoHorizontalOverflow(page);
       results.push({ lesson, frame: 790, tabsRowFits: true });
     } finally {

@@ -59,6 +59,9 @@ export function createWorkbenchMoreMenu(options: {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       open(event.key === 'ArrowDown' ? 0 : -1);
+    } else if (event.key === 'Escape' && !menu.hidden) {
+      event.preventDefault();
+      setOpen(false);
     }
   };
   menu.onkeydown = (event) => {
@@ -94,6 +97,13 @@ export function createWorkbenchMoreMenu(options: {
     sync(items) {
       element.hidden = items.length === 0;
       if (items.length === 0) setOpen(false);
+      const current = entries().map((item) => item.textContent);
+      // Rebuilding would drop focus from an open menu on every render.
+      if (
+        current.length === items.length &&
+        current.every((name, index) => name === items[index])
+      )
+        return;
       menu.replaceChildren(
         ...items.map((name) => {
           const item = document.createElement('button');

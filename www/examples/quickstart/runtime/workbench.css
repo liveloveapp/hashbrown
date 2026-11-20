@@ -603,24 +603,19 @@ body {
 }
 .wb-tabs-row {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0;
   min-height: var(--wb-head);
   padding: 0 calc(var(--wb-pad) - var(--wb-tight));
   box-shadow: inset 0 -1px 0 var(--wb-line);
 }
-/* The mode toggle sits at the right end of the row. */
+/* The mode toggle sits at the right end of the row; when tabs, More and the
+   toggle do not fit one line it wraps onto its own line under the tabs. */
 .wb-tabs-row > .wb-segmented {
-  margin-left: auto;
+  margin: var(--wb-tight) 0 var(--wb-tight) auto;
 }
-/* On a phone-width inspector the toggle drops to its own line under the tabs. */
-@container (max-width: 400px) {
-  .wb-tabs-row {
-    flex-wrap: wrap;
-  }
-}
-/* One line: tabs that do not fit scroll sideways (the mode toggle keeps its width). */
+/* Safety net: a lone row of tabs wider than the inspector scrolls sideways. */
 .wb-tabs {
   display: flex;
   flex: 0 1 auto;
