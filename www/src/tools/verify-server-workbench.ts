@@ -1,3 +1,4 @@
+import { seedOpenWorkbenchLayout } from './workbench-open-layout';
 import { assertWorkbenchCaptureAfterReload } from '../../examples/quickstart/runtime/workbench-lessons';
 import { readInspectorJson } from './verify-inspector-modes';
 import { saveWorkbenchCapture } from './workbench-capture-file';
@@ -33,6 +34,7 @@ export async function verifyServerWorkbench(options: {
       ? { recordVideo: { dir: work, size: { width: 1600, height: 1000 } } }
       : {}),
   });
+  await seedOpenWorkbenchLayout(page);
   const base = `${framework}-${lesson}-${live ? 'live' : 'fixture'}`;
   const started = Date.now();
   const phases: Record<string, number> = {};

@@ -64,6 +64,7 @@ import {
 } from '../../examples/quickstart/runtime/workbench-lessons';
 import { createWorkbenchApp } from '../../examples/quickstart/server/workbench-app';
 import { selectInspectorTab } from './verify-inspector-tabs';
+import { seedOpenWorkbenchLayout } from './workbench-open-layout';
 
 const live = process.env['WORKBENCH_LIVE'] === '1';
 const recording = process.env['WORKBENCH_RECORD'] === '1';
@@ -960,6 +961,7 @@ try {
           ? { recordVideo: { dir: work, size: { width: 1600, height: 1000 } } }
           : {}),
       });
+      await seedOpenWorkbenchLayout(page);
       const captureStarted = Date.now();
       const phases: Record<string, number> = {};
       const mark = (name: string) => {

@@ -9,13 +9,16 @@ export interface WorkbenchLayout {
 
 /** The layout used when nothing valid is stored. */
 export const workbenchLayoutDefaults: WorkbenchLayout = {
-  rail: false,
-  collapsed: [],
+  rail: true,
+  collapsed: ['start', 'concepts', 'production', 'recipes'],
   split: 44,
 };
 
 /** The storage key for the persisted layout. */
-export const workbenchLayoutKey = 'hashbrown.workbench.layout';
+export const workbenchLayoutKey = 'hashbrown.workbench.layout.v2';
+
+/** The pre-v2 storage key; only its split is migrated, once. */
+export const workbenchLegacyLayoutKey = 'hashbrown.workbench.layout';
 
 const sections: readonly string[] = [
   'conversations',
@@ -38,6 +41,17 @@ export function stepWorkbenchSplit(split: number, key: string): number | null {
   if (key === 'ArrowRight') return clampWorkbenchSplit(split + 4);
   if (key === 'Home') return workbenchLayoutDefaults.split;
   return null;
+}
+
+/** Returns the layout with one lesson section expanded (not collapsed). */
+export function workbenchExpandSection(
+  layout: WorkbenchLayout,
+  section: WorkbenchSidebarSection,
+): WorkbenchLayout {
+  return {
+    ...layout,
+    collapsed: layout.collapsed.filter((item) => item !== section),
+  };
 }
 
 /** Parses a stored layout, ignoring anything invalid. */
@@ -92,7 +106,16 @@ export function createWorkbenchLayoutStore(
 ): WorkbenchLayoutStore {
   let layout = workbenchLayoutDefaults;
   try {
-    layout = parseWorkbenchLayout(storage?.getItem(workbenchLayoutKey) ?? null);
+    const saved = storage?.getItem(workbenchLayoutKey) ?? null;
+    if (saved) {
+      layout = parseWorkbenchLayout(saved);
+    } else {
+      // Migrate once: a legacy layout keeps only its split.
+      const legacy = parseWorkbenchLayout(
+        storage?.getItem(workbenchLegacyLayoutKey) ?? null,
+      );
+      layout = { ...workbenchLayoutDefaults, split: legacy.split };
+    }
   } catch {
     // Storage may be blocked; stay memory-only.
   }

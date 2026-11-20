@@ -1,3 +1,4 @@
+import { seedOpenWorkbenchLayout } from './workbench-open-layout';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import {
   type Browser,
@@ -30,6 +31,7 @@ export async function verifyLocalWorkbench(options: {
     : await options.browser.newPage({
         viewport: { width: 1600, height: 1000 },
       });
+  await seedOpenWorkbenchLayout(page);
   const errors: string[] = [],
     posts: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));

@@ -1,3 +1,4 @@
+import { seedOpenWorkbenchLayout } from './workbench-open-layout';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
@@ -48,6 +49,7 @@ export async function verifyUiWorkbench(options: {
       ? { recordVideo: { dir: work, size: { width: 1600, height: 1000 } } }
       : {}),
   });
+  await seedOpenWorkbenchLayout(page);
   const started = Date.now();
   const phases: Record<string, number> = {};
   const mark = (name: string) => {

@@ -1,3 +1,4 @@
+import { seedOpenWorkbenchLayout } from './workbench-open-layout';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import { expectInspectionText } from './verify-inspector-modes';
 import {
@@ -28,6 +29,7 @@ export async function verifyDecisionWorkbench(options: {
       ? { recordVideo: { dir: work, size: { width: 1600, height: 1000 } } }
       : {}),
   });
+  await seedOpenWorkbenchLayout(page);
   const started = Date.now();
   const phases: Record<string, number> = {};
   const mark = (name: string) => {

@@ -3,7 +3,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test, vi } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
-import { createWorkbenchLayoutStore } from '../examples/quickstart/runtime/workbench-layout';
+import {
+  createWorkbenchLayoutStore,
+  workbenchLayoutKey,
+} from '../examples/quickstart/runtime/workbench-layout';
 import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
 import {
   chooseInspectorMode,
@@ -21,7 +24,16 @@ function fakeStorage() {
   };
 }
 
-function mountShell(layout = createWorkbenchLayoutStore(fakeStorage())) {
+/** A layout store seeded with the open sidebar (not the rail default). */
+function openLayoutStore(storage = fakeStorage()) {
+  storage.map.set(
+    workbenchLayoutKey,
+    JSON.stringify({ rail: false, collapsed: [], split: 44 }),
+  );
+  return createWorkbenchLayoutStore(storage);
+}
+
+function mountShell(layout = openLayoutStore()) {
   const host = document.createElement('div');
   document.body.append(host);
   const store = createWorkbenchStore();
@@ -45,7 +57,7 @@ function mountShell(layout = createWorkbenchLayoutStore(fakeStorage())) {
   return { host, store, shell, layout };
 }
 
-test('renders New conversation first and five expanded sections by default', () => {
+test('renders New conversation first and five expanded sections when the sidebar is open', () => {
   const { host, shell } = mountShell();
 
   const firstButton = host.querySelector('.wb-nav button');
@@ -97,7 +109,7 @@ test('folds a section and persists it', () => {
 });
 
 test('collapses to an icon rail that keeps accessible names', () => {
-  const { host, shell } = mountShell(createWorkbenchLayoutStore(fakeStorage()));
+  const { host, shell } = mountShell(openLayoutStore());
   host
     .querySelector<HTMLButtonElement>('[data-section=recipes] .wb-nav-heading')
     ?.click();
@@ -119,7 +131,7 @@ test('collapses to an icon rail that keeps accessible names', () => {
 });
 
 test('shares rail state across retained instances', () => {
-  const layout = createWorkbenchLayoutStore(fakeStorage());
+  const layout = openLayoutStore();
   const first = mountShell(layout);
   const second = mountShell(layout);
 
@@ -133,7 +145,7 @@ test('shares rail state across retained instances', () => {
 });
 
 test('stops following the layout store after dispose', () => {
-  const layout = createWorkbenchLayoutStore(fakeStorage());
+  const layout = openLayoutStore();
   const { host, shell } = mountShell(layout);
   const root = host.querySelector('.wb');
   shell.dispose();
@@ -323,7 +335,7 @@ test('drags the split relative to chat and inspector', () => {
 test('persists the split once when a drag ends', () => {
   const storage = fakeStorage();
   const setItem = vi.spyOn(storage, 'setItem');
-  const { host, shell } = mountShell(createWorkbenchLayoutStore(storage));
+  const { host, shell } = mountShell(openLayoutStore(storage));
   const separator = host.querySelector<HTMLElement>('[role=separator]');
   const rect = (left: number, right: number) =>
     ({ left, right, width: right - left }) as DOMRect;
@@ -347,7 +359,7 @@ test('persists the split once when a drag ends', () => {
   expect(writesWhileDragging).toBe(0);
   expect(setItem).toHaveBeenCalledTimes(1);
   expect(
-    JSON.parse(storage.map.get('hashbrown.workbench.layout') as string).split,
+    JSON.parse(storage.map.get(workbenchLayoutKey) as string).split,
   ).toBe(60);
   shell.dispose();
 });
@@ -781,7 +793,7 @@ test('rebuilds the sidebar only when rail or sections change', () => {
 });
 
 test('drives playback from shortcuts only on the visible instance', () => {
-  const layout = createWorkbenchLayoutStore(fakeStorage());
+  const layout = openLayoutStore();
   const first = mountShell(layout);
   const second = mountShell(layout);
   second.host.hidden = true;

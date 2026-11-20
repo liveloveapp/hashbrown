@@ -4,8 +4,10 @@ import {
   createWorkbenchLayoutStore,
   parseWorkbenchLayout,
   stepWorkbenchSplit,
+  workbenchExpandSection,
   workbenchLayoutDefaults,
   workbenchLayoutKey,
+  workbenchLegacyLayoutKey,
 } from '../examples/quickstart/runtime/workbench-layout';
 
 function fakeStorage() {
@@ -50,14 +52,14 @@ test('persists patches and notifies subscribers', () => {
   const listener = vi.fn();
   store.subscribe(listener);
 
-  store.set({ rail: true });
+  store.set({ rail: false });
 
-  expect(store.get().rail).toBe(true);
+  expect(store.get().rail).toBe(false);
   expect(listener).toHaveBeenCalledTimes(1);
   expect(JSON.parse(storage.map.get(workbenchLayoutKey) as string).rail).toBe(
-    true,
+    false,
   );
-  expect(createWorkbenchLayoutStore(storage).get().rail).toBe(true);
+  expect(createWorkbenchLayoutStore(storage).get().rail).toBe(false);
 });
 
 test('updates memory without writing storage when persist is false', () => {
@@ -79,7 +81,7 @@ test('stops notifying a listener after it unsubscribes', () => {
   const unsubscribe = store.subscribe(listener);
 
   unsubscribe();
-  store.set({ rail: true });
+  store.set({ rail: false });
 
   expect(listener).not.toHaveBeenCalled();
 });
@@ -100,4 +102,70 @@ test('survives storage that throws', () => {
 
   expect(initial).toEqual(workbenchLayoutDefaults);
   expect(store.get().split).toBe(60);
+});
+
+const lessonSections = ['start', 'concepts', 'production', 'recipes'];
+
+test('a new reader starts in rail mode with lesson sections collapsed', () => {
+  const store = createWorkbenchLayoutStore(fakeStorage());
+
+  const layout = store.get();
+
+  expect(layout).toEqual({ rail: true, collapsed: lessonSections, split: 44 });
+  expect(workbenchLayoutKey).toBe('hashbrown.workbench.layout.v2');
+});
+
+test('a legacy layout keeps its split but takes the new rail default', () => {
+  const storage = fakeStorage();
+  storage.map.set(
+    workbenchLegacyLayoutKey,
+    '{"rail":false,"collapsed":[],"split":60}',
+  );
+
+  const store = createWorkbenchLayoutStore(storage);
+
+  expect(workbenchLegacyLayoutKey).toBe('hashbrown.workbench.layout');
+  expect(store.get()).toEqual({
+    rail: true,
+    collapsed: lessonSections,
+    split: 60,
+  });
+  expect(storage.map.has(workbenchLayoutKey)).toBe(false);
+
+  store.set({ split: 50 });
+
+  expect(JSON.parse(storage.map.get(workbenchLayoutKey) as string)).toEqual({
+    rail: true,
+    collapsed: lessonSections,
+    split: 50,
+  });
+});
+
+test('a saved v2 choice wins over the defaults', () => {
+  const storage = fakeStorage();
+  storage.map.set(
+    workbenchLayoutKey,
+    '{"rail":false,"collapsed":["recipes"],"split":30}',
+  );
+  storage.map.set(workbenchLegacyLayoutKey, '{"split":70}');
+
+  const store = createWorkbenchLayoutStore(storage);
+
+  expect(store.get()).toEqual({
+    rail: false,
+    collapsed: ['recipes'],
+    split: 30,
+  });
+});
+
+test('expanding a section removes only that section', () => {
+  const layout = workbenchLayoutDefaults;
+
+  const expanded = workbenchExpandSection(layout, 'concepts');
+
+  expect(expanded).toEqual({
+    ...layout,
+    collapsed: ['start', 'production', 'recipes'],
+  });
+  expect(layout.collapsed).toEqual(lessonSections);
 });

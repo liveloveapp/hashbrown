@@ -1,4 +1,5 @@
 import { readInspectorJson, showInspectorMode } from './verify-inspector-modes';
+import { seedOpenWorkbenchLayout } from './workbench-open-layout';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
@@ -30,6 +31,7 @@ export async function verifyWorkflowWorkbench(options: {
       ? { recordVideo: { dir: work, size: { width: 1600, height: 1000 } } }
       : {}),
   });
+  await seedOpenWorkbenchLayout(page);
   const base = `${framework}-${lesson}-${live ? 'live' : 'fixture'}`;
   const started = Date.now();
   const phases: Record<string, number> = {};

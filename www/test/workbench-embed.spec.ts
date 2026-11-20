@@ -2,7 +2,10 @@
 import { expect, test, vi } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 import { getWorkbenchEmbedMode } from '../examples/quickstart/runtime/workbench-embed';
-import { createWorkbenchLayoutStore } from '../examples/quickstart/runtime/workbench-layout';
+import {
+  createWorkbenchLayoutStore,
+  workbenchLayoutKey,
+} from '../examples/quickstart/runtime/workbench-layout';
 import {
   mountWorkbench,
   type WorkbenchMountOptions,
@@ -17,8 +20,12 @@ function fakeStorage() {
   };
 }
 
-function mountEmbedded(options: WorkbenchMountOptions) {
+function mountEmbedded(
+  options: WorkbenchMountOptions,
+  seed?: Record<string, unknown>,
+) {
   const storage = fakeStorage();
+  if (seed) storage.map.set(workbenchLayoutKey, JSON.stringify(seed));
   const store = createWorkbenchStore();
   const host = document.createElement('div');
   document.body.append(host);
@@ -80,13 +87,18 @@ test('embedded mounts ignore the sidebar shortcut and never write the layout', (
 });
 
 test('non-embedded mounts toggle the rail with the same shortcut', () => {
-  const { host, storage } = mountEmbedded({ embed: null });
+  const { host, storage } = mountEmbedded(
+    { embed: null },
+    { rail: false, collapsed: [], split: 44 },
+  );
 
   document.dispatchEvent(
     new KeyboardEvent('keydown', { key: 'b', metaKey: true, bubbles: true }),
   );
 
-  expect(storage.map.size).toBe(1);
+  expect(JSON.parse(storage.map.get(workbenchLayoutKey) as string).rail).toBe(
+    true,
+  );
   expect(host.querySelector('.wb-rail')).not.toBeNull();
 });
 

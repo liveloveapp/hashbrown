@@ -1,3 +1,4 @@
+import { seedOpenWorkbenchLayout } from './workbench-open-layout';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import { type Browser, expect } from '@playwright/test';
 import { resolve } from 'node:path';
@@ -94,6 +95,7 @@ export async function verifyJavaScriptWorkbench(options: {
       ? { recordVideo: { dir: work, size: { width: 1600, height: 1000 } } }
       : {}),
   });
+  await seedOpenWorkbenchLayout(page);
   await page.addInitScript(() => {
     const state = window as unknown as { __workbenchWasmStarts: number };
     state.__workbenchWasmStarts = 0;
