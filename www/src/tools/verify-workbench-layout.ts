@@ -94,7 +94,7 @@ export interface WorkbenchAlignmentReport {
  * `getBoundingClientRect` and computed styles, with a 0.5px tolerance:
  *
  * - the chat head and the inspector tab row are the same height and level;
- * - each panel's head, body and caption share the panel's inner left edge;
+ * - each panel's head and body share the panel's inner left edge;
  * - the section title and mode toggle share a centre line;
  * - the playback buttons share a centre line, and the timeline is inset
  *   equally on both sides (and, in one row, centred on the buttons);
@@ -171,7 +171,7 @@ export async function measureWorkbenchAlignment(
 
     // 1. Chat head and inspector tab row: same height, level bottoms.
     const head = chat.querySelector('.wb-panel-head');
-    const tabs = inspector.querySelector('.wb-tabs');
+    const tabs = inspector.querySelector('.wb-tabs-row');
     if (visible(head) && visible(tabs)) {
       expectNear('head heights (chat, tabs)', [
         rect(head).height,
@@ -197,21 +197,17 @@ export async function measureWorkbenchAlignment(
     const inspectorEdges = [inspectorEdge];
     const firstTab = tabs?.querySelector('[role="tab"]');
     if (visible(firstTab)) inspectorEdges.push(contentLeft(firstTab));
-    const sectionHead = inspector.querySelector('.wb-section-head');
-    if (visible(sectionHead)) inspectorEdges.push(contentLeft(sectionHead));
     const inspection = inspector.querySelector(
       '.wb-inspection:not(.wb-requests)',
     );
     if (visible(inspection)) inspectorEdges.push(contentLeft(inspection));
-    const caption = inspector.querySelector('.wb-caption');
-    if (visible(caption)) inspectorEdges.push(contentLeft(caption));
     expectNear(
-      'inspector left edges (panel+pad, tab text, section head, body, caption)',
+      'inspector left edges (panel+pad, tab text, body)',
       inspectorEdges,
     );
 
     // The inspector body (code block or tree) fills the inspection box down
-    // to its bottom padding, with no empty band above the caption.
+    // to its bottom padding, with no empty band below it.
     if (visible(inspection)) {
       const body = [...inspection.children].filter(visible).at(-1);
       if (body) {
@@ -226,19 +222,16 @@ export async function measureWorkbenchAlignment(
       }
     }
 
-    // 3. Section title and mode toggle share a centre line; caption on the grid.
-    const title = sectionHead?.querySelector('h3');
-    const toggle = sectionHead?.querySelector('.wb-segmented');
-    if (visible(title) && visible(toggle))
-      expectNear('section head centres (title, toggle)', [
-        rect(title).top + rect(title).height / 2,
+    // 3. The mode toggle and the selected tab share a centre line.
+    const toggle = tabs?.querySelector('.wb-segmented');
+    const selectedTab = tabs?.querySelector(
+      '[role="tab"][aria-selected="true"]',
+    );
+    if (visible(toggle) && visible(selectedTab))
+      expectNear('tab row centres (selected tab, toggle)', [
+        rect(selectedTab).top + rect(selectedTab).height / 2,
         rect(toggle).top + rect(toggle).height / 2,
       ]);
-    if (visible(caption)) {
-      measurements['caption height'] = round(rect(caption).height);
-      if (!onGrid(rect(caption).height))
-        failures.push(`caption height ${round(rect(caption).height)}`);
-    }
 
     // 4. Playback: one button centre line; the timeline inset equally.
     const player = playback.querySelector('.wb-player');
@@ -458,7 +451,7 @@ export async function measureWorkbenchAlignment(
       // paddings and rows are on the grid, not their viewport-driven height.
       if (
         element.matches(
-          'button, select, input:not([type="range"]), [role="tab"], [role="treeitem"], tr, .wb-panel-head, .wb-tabs, .wb-section-head, .wb-caption, .wb-segmented, .wb-requests-tabs, .wb-requests-detail-head, .wb-requests-pickbar, .wb-requests-overview, .wb-playback, .wb-scrubber',
+          'button, select, input:not([type="range"]), [role="tab"], [role="treeitem"], tr, .wb-panel-head, .wb-tabs-row, .wb-segmented, .wb-requests-tabs, .wb-requests-detail-head, .wb-requests-pickbar, .wb-requests-overview, .wb-playback, .wb-scrubber',
         ) &&
         !onGrid(rect(element).height)
       )

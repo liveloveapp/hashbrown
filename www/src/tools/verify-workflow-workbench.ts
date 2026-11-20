@@ -59,7 +59,6 @@ export async function verifyWorkflowWorkbench(options: {
     const approvals = root.locator('.wb-workflow-approvals');
     const activities = root.locator('.wb-workflow-activity');
     const capturedSection = root.locator('.wb-inspector [data-captured]');
-    const caption = capturedSection.locator('.wb-caption');
     const inspection = capturedSection.locator('.wb-inspection');
     const tab = async (name: string) => {
       await root
@@ -93,7 +92,6 @@ export async function verifyWorkflowWorkbench(options: {
         await expect(capturedSection.locator('h3')).toContainText(
           headings[name],
         );
-      await expect(caption).toContainText('Captured SDK observations');
       expect(interpreted).not.toHaveProperty('sdk');
       if (name === 'State') {
         expect(capturedValue).not.toHaveProperty('messages');

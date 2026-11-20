@@ -716,6 +716,7 @@ export function mountWorkbench(
   );
   const inspector = element('section', '', 'wb-panel wb-inspector');
   inspector.setAttribute('aria-label', 'Inspector');
+  const tabsRow = element('div', '', 'wb-tabs-row');
   const tabs = element('div', '', 'wb-tabs');
   tabs.setAttribute('role', 'tablist');
   tabs.setAttribute('aria-label', 'Inspector views');
@@ -736,7 +737,7 @@ export function mountWorkbench(
   let requestsIssue: HTMLElement | undefined;
   const captured = element('section', '', 'wb-section');
   captured.dataset.captured = '';
-  const capturedHeading = element('h3');
+  const capturedHeading = element('h3', '', 'wb-visually-hidden');
   const modeMemory = createInspectorModeMemory();
   // Long-lived so branches the reader opened or closed survive re-renders and scrubbing.
   const stateTree = createWorkbenchTree({ label: 'Application state' });
@@ -747,11 +748,8 @@ export function mountWorkbench(
       render();
     },
   });
-  const capturedHeader = element('header', '', 'wb-section-head');
-  capturedHeader.append(capturedHeading, modeControl.element);
   const inspection = element('div', '', 'wb-inspection');
-  const caption = element('p', '', 'wb-caption');
-  captured.append(capturedHeader, inspection, caption);
+  captured.append(capturedHeading, inspection);
   pair.append(captured);
   let tab = commands.lesson?.inspector ?? 'JSON';
   const tabButtons = (
@@ -816,7 +814,8 @@ export function mountWorkbench(
   });
   tabs.append(...tabButtons);
   const inspectorTabs = createWorkbenchTabs(tabs, tabPanel);
-  inspector.append(tabs, tabPanel);
+  tabsRow.append(tabs, modeControl.element);
+  inspector.append(tabsRow, tabPanel);
   const footer = element('section', '', 'wb-playback');
   footer.setAttribute('aria-label', 'Captured timeline');
   let rawEvents = false;
@@ -1670,26 +1669,6 @@ export function mountWorkbench(
       capturedHeading.title = title;
     }
     modeControl.sync(modes, mode.id);
-    const sourcePhrase = frame
-      ? options.inspection
-        ? 'Captured protocol and runtime observations'
-        : commands.lesson?.id === 'javascript-runtime'
-          ? 'Captured native QuickJS values and application-owned state'
-          : uiView
-            ? tab === 'UI'
-              ? 'SDK component observations and application-owned state'
-              : 'Framework kit configuration and checked application policy'
-            : workflowView
-              ? 'Captured SDK observations and separately recorded application form drafts'
-              : tab === 'JSON' || tab === 'UI'
-                ? 'SDK parsed output'
-                : frame.source
-      : 'Waiting for captured data';
-    caption.textContent = frame
-      ? `${sourcePhrase} · turn ${frame.turn} · event ${selectedIndex + 1}/${snapshot.events.length}${
-          (frame.status ?? snapshot.status) === 'loading' ? ' · streaming' : ''
-        }${historical ? '' : ' · live'}`
-      : sourcePhrase;
     // The panel is off-screen on the Requests tab; skip highlighting it.
     if (!onRequests)
       if (tab === 'State' && mode.id === 'tree') {

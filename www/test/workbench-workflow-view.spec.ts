@@ -118,9 +118,6 @@ test('paired workflow inspector follows the selected SDK frame and local form hi
   expect(interpreted.batchId).toBe(captured.pending.id);
   expect(interpreted.applicationForm.answers).toEqual({ first: 'approve' });
   expect(interpreted).not.toHaveProperty('sdk');
-  expect(host.querySelector('.wb-caption')?.textContent).toContain(
-    'separately recorded application form drafts',
-  );
   function tab(name: string) {
     const control = [
       ...host.querySelectorAll<HTMLButtonElement>('[role=tab]'),

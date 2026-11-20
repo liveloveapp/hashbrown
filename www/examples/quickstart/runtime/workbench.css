@@ -601,13 +601,30 @@ body {
   min-height: 0;
   container-type: inline-size;
 }
-.wb-tabs {
+.wb-tabs-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0;
+  align-items: center;
+  gap: var(--wb-gap);
   min-height: var(--wb-head);
   padding: 0 calc(var(--wb-pad) - var(--wb-tight));
   box-shadow: inset 0 -1px 0 var(--wb-line);
+}
+/* The mode toggle sits at the right end of the row. */
+.wb-tabs-row > .wb-segmented {
+  margin-left: auto;
+}
+/* One line: tabs that do not fit scroll sideways (the mode toggle keeps its width). */
+.wb-tabs {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+  gap: 0;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.wb .wb-tabs button {
+  flex: none;
 }
 /* The 2px underline is the tab's bottom border; a matching top border keeps the label centred. */
 .wb .wb-tabs button {
@@ -642,21 +659,6 @@ body {
   min-width: 0;
   min-height: 0;
 }
-.wb-section-head {
-  display: flex;
-  align-items: center;
-  gap: var(--wb-space-1) var(--wb-space-2);
-  padding: var(--wb-space-3) var(--wb-pad) var(--wb-space-2);
-}
-/* The title stays on one line and truncates first, so the mode toggle keeps its natural width. */
-.wb .wb-section-head h3 {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-}
 /* 1px border + 3px + 24px buttons: a 32px control. Buttons abut (their own
    8px padding spaces the labels), so it fits a 390px phone with every mode. */
 .wb-segmented {
@@ -689,20 +691,13 @@ body {
   color: var(--wb-ink);
   font-weight: 600;
 }
-.wb-caption {
-  margin: 0;
-  padding: var(--wb-space-2) var(--wb-pad);
-  box-shadow: inset 0 1px 0 var(--wb-line);
-  color: var(--wb-muted);
-  font-size: 12px;
-}
 .wb-inspection {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: var(--wb-stack);
-  padding: 0 var(--wb-pad) var(--wb-pad);
+  padding: var(--wb-pad);
   overflow: auto;
 }
 .wb pre {

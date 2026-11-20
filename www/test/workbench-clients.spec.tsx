@@ -217,7 +217,6 @@ test('pairs captured and interpreted content under one selection strip', () => {
   const tabs = [...host.querySelectorAll('[role=tab]')].map(
     (tab) => tab.textContent,
   );
-  const caption = host.querySelector('.wb-caption')?.textContent;
   const bodyBefore = host.querySelector('.wb-inspection pre')?.textContent;
   const titleBefore = host.querySelector('[data-captured] h3')?.textContent;
 
@@ -233,9 +232,6 @@ test('pairs captured and interpreted content under one selection strip', () => {
   expect(host.querySelector('.wb-inspection')?.textContent).toContain(
     'Trusted plan',
   );
-  expect(caption).toMatch(
-    /^SDK parsed output · turn 1 · event \d+\/\d+ · live$/,
-  );
   expect(tabs).not.toContain('Details');
   expect(tabs).not.toContain('Raw');
   expect(tabs).not.toContain('Console');
@@ -245,24 +241,6 @@ test('pairs captured and interpreted content under one selection strip', () => {
   expect(rawBody).toContain(String(frame?.kind));
   expect(host.querySelector('[data-captured] h3')?.textContent).toBe(
     'Model output',
-  );
-  shell.dispose();
-});
-
-test('captions the panel with the loading turn and its event position', () => {
-  const host = document.createElement('div');
-  const store = createWorkbenchStore();
-  const shell = mountWorkbench(host, store, {
-    framework: 'React',
-    send: vi.fn(),
-    stop: vi.fn(),
-    reset: vi.fn(),
-  });
-
-  store.send('Create a plan');
-
-  expect(host.querySelector('.wb-caption')?.textContent).toMatch(
-    /· turn 1 · event 1\/1 · streaming · live$/,
   );
   shell.dispose();
 });
@@ -562,9 +540,6 @@ test('shows the shared plan contract separately from the parsed preview in the S
   expect(captured?.textContent).toContain('"type": "object"');
   expect(captured?.textContent).toContain('"steps"');
   chooseInspectorMode(host, 'bottom');
-  expect(host.querySelector('[data-captured]')?.textContent).toContain(
-    'Preview validation',
-  );
   shell.dispose();
 });
 
@@ -820,7 +795,6 @@ test('shows Markdown and selected source details through the recipe inspector in
     host.querySelector('.wb-inspector .wb-inspection')?.textContent,
   ).toContain('## Our plan');
   chooseInspectorMode(host, 'bottom');
-  expect(inspectorPanelText(host)).toContain('Selected reference');
   expect(inspectorPanelText(host)).toContain('https://hashbrown.dev');
   shell.dispose();
 });

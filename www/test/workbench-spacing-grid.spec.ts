@@ -88,9 +88,13 @@ function declaration(body: string, name: string): string {
   return match?.[1].trim() ?? '';
 }
 
-/** Returns the body of each listed selector's top-level rule. */
+/** Returns the body of each listed selector's top-level rule; throws when one has no rule. */
 function panelRules(source: string, selectors: string[]): string[] {
-  return selectors.map((selector) => ruleBody(source, selector));
+  return selectors.map((selector) => {
+    const body = ruleBody(source, selector);
+    if (body === '') throw new Error(`no rule found for ${selector}`);
+    return body;
+  });
 }
 
 test('panel spacing reads only the semantic tokens', () => {
@@ -99,12 +103,13 @@ test('panel spacing reads only the semantic tokens', () => {
     '.wb-panel-head',
     '.wb-feed',
     '.wb-composer',
-    '.wb-tabs',
+    '.wb-tabs-row',
     '.wb-inspection',
     '.wb-player',
     '.wb-layout',
   ]);
 
+  // (?<![-\w]) skips custom-property names like --wb-pad: so only real padding/gap declarations match.
   const literal = rules.filter((rule) =>
     /(?<![-\w])(?:padding|gap)\s*:[^;]*var\(--wb-space-\d+\)/.test(rule),
   );

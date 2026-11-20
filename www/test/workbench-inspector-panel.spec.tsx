@@ -124,7 +124,7 @@ function checkedMode(host: HTMLElement) {
 }
 
 function panelTitle(host: HTMLElement) {
-  return host.querySelector('[data-captured] .wb-section-head h3')?.textContent;
+  return host.querySelector('[data-captured] h3')?.textContent;
 }
 
 test('the UI and JSON modes stay the same before and after JSON streams', () => {
@@ -203,20 +203,28 @@ test('titles the panel by tab without repeating the selected mode', () => {
   shell.dispose();
 });
 
-test('the panel title truncates on one line beside a toggle that never wraps', () => {
-  const css = readFileSync(
-    join(repoRoot(), 'www/examples/quickstart/runtime/workbench.css'),
-    'utf8',
-  );
+test('the mode toggle sits in the tab row', () => {
+  const { host, shell } = mountPanel(generative);
 
-  const title = css.match(/\.wb \.wb-section-head h3 \{([^}]*)\}/)?.[1] ?? '';
-  const toggle = css.match(/\.wb-segmented \{([^}]*)\}/)?.[1] ?? '';
+  const row = host.querySelector('.wb-inspector .wb-tabs-row') as Element;
 
-  expect(title).toContain('white-space: nowrap');
-  expect(title).toContain('overflow: hidden');
-  expect(title).toContain('text-overflow: ellipsis');
-  expect(toggle).toContain('flex: none');
-  expect(toggle).toContain('flex-wrap: nowrap');
+  expect(
+    row.querySelector('[role=tablist][aria-label="Inspector views"]'),
+  ).not.toBeNull();
+  expect(row.querySelector('.wb-segmented')).not.toBeNull();
+  shell.dispose();
+});
+
+test('the inspector has no caption and no visible section title', () => {
+  const { host, shell } = mountPanel(generative);
+
+  const inspector = host.querySelector('.wb-inspector');
+  const heading = inspector?.querySelector('[data-captured] h3');
+
+  expect(inspector?.querySelector('.wb-caption')).toBeNull();
+  expect(inspector?.querySelector('.wb-section-head')).toBeNull();
+  expect(heading?.classList.contains('wb-visually-hidden')).toBe(true);
+  shell.dispose();
 });
 
 test('Raw shows the frame json and the choice survives a tab round trip', () => {
@@ -235,17 +243,6 @@ test('Raw shows the frame json and the choice survives a tab round trip', () => 
     host.querySelector('[role=radio][aria-checked=true]')?.textContent,
   ).toBe('Raw');
   expect(host.querySelector('.wb-inspection pre')?.textContent).toBe(rawText);
-  shell.dispose();
-});
-
-test('captions the panel with its source, turn and event position', () => {
-  const { host, store, shell } = mountPanel(generative);
-
-  streamPlan(store);
-
-  expect(host.querySelector('.wb-inspector .wb-caption')?.textContent).toMatch(
-    /· turn \d+ · event \d+\/\d+( · live)?$/,
-  );
   shell.dispose();
 });
 
@@ -282,23 +279,6 @@ test('shows the waiting text instead of null before a decision arrives', () => {
   expect(host.querySelector('.wb-inspection pre')?.textContent).toBe(
     'Waiting for captured data',
   );
-  shell.dispose();
-});
-
-test('captions a loading capture as streaming and the newest event as live', () => {
-  const { host, store, shell } = mountPanel(generative);
-
-  store.send('Create a plan');
-  const loading = host.querySelector('.wb-caption')?.textContent;
-  store.settle('complete', 'stop');
-  const live = host.querySelector('.wb-caption')?.textContent;
-  store.seek(0);
-  const replay = host.querySelector('.wb-caption')?.textContent;
-
-  expect(loading).toMatch(/· event 1\/1 · streaming · live$/);
-  expect(live).toMatch(/· turn 1 · event \d+\/\d+ · live$/);
-  expect(replay).toMatch(/· turn 1 · event 1\/\d+/);
-  expect(replay).not.toContain('live');
   shell.dispose();
 });
 

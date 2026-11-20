@@ -201,9 +201,7 @@ test('Prose retains captured SDK Markdown and citation selection is inert in his
   const root = createRoot(host);
 
   await act(() =>
-    root.render(
-      <ProseWorkbenchConversation active navigation={navigation} />,
-    ),
+    root.render(<ProseWorkbenchConversation active navigation={navigation} />),
   );
   expect(chat.sendMessage).not.toHaveBeenCalled();
   await send(host);
@@ -449,9 +447,7 @@ test('Prose preserves parser completion at a partial historical frame while hidi
   const root = createRoot(host);
 
   await act(() =>
-    root.render(
-      <ProseWorkbenchConversation active navigation={navigation} />,
-    ),
+    root.render(<ProseWorkbenchConversation active navigation={navigation} />),
   );
   await send(host);
   const user = chat.sendMessage.mock.calls[0][0];
@@ -687,10 +683,7 @@ test('plain onboarding captures escaped replies and retained turns without tools
     });
     await act(() =>
       root.render(
-        <ProseWorkbenchConversation
-          active
-          navigation={{ ...navigation }}
-        />,
+        <ProseWorkbenchConversation active navigation={{ ...navigation }} />,
       ),
     );
 
