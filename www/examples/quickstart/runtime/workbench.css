@@ -1409,7 +1409,7 @@ body {
   border-radius: inherit;
   background: var(--wb-cobalt);
 }
-/* Turn segments stay quiet; the turn name shows as a tooltip (title) on hover. */
+/* Turn segments carry no text; the playhead flag names the turn on hover or focus. */
 /* The native range is the playhead: a transparent track with a cobalt thumb, centred on 0–100%. */
 .wb-scrubber input[type='range'] {
   position: absolute;

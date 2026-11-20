@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { expect, test, vi } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
 import { createWorkbenchLayoutStore } from '../examples/quickstart/runtime/workbench-layout';
@@ -594,13 +596,12 @@ test('positions ticks and the flag on the scrubber', () => {
   expect(empty).toBe('No captured events');
   expect(ticks.every((tick) => tick.style.left.endsWith('%'))).toBe(true);
   expect(flag?.getAttribute('aria-hidden')).toBe('true');
-  expect(flag?.textContent).toBe(pressed?.textContent);
   expect(flag?.style.left).toBe('60%');
   expect(flag?.hasAttribute('data-anchor')).toBe(false);
   expect(
     segments.map((segment) => segment.style.getPropertyValue('--wb-fill')),
   ).toEqual(['100%', '0%']);
-  expect(segments[1]?.title).toBe('Turn 2');
+  expect(flag?.textContent).toBe(`Turn 2 · ${pressed?.textContent}`);
   shell.dispose();
 });
 
@@ -637,24 +638,31 @@ test('marks only the tick under the playhead so its mark yields to the thumb', (
   shell.dispose();
 });
 
-test('turn labels and the milestone flag show only on hover or focus', () => {
+test('the playhead flag names the turn and shows only on hover or focus', () => {
   const { host, store, shell } = mountShell();
-  recordTwoTurns(store);
+  const secondTurnStart = recordTwoTurns(store);
 
-  const segments = [
-    ...host.querySelectorAll<HTMLElement>('.wb-scrubber .wb-segment'),
-  ];
+  store.seek(secondTurnStart + 1);
+
   const flag = host.querySelector('.wb-scrubber .wb-flag');
-
-  expect(segments.map((segment) => segment.getAttribute('title'))).toEqual([
-    'Turn 1',
-    'Turn 2',
-  ]);
-  expect(segments.map((segment) => segment.getAttribute('aria-label'))).toEqual(
-    ['Turn 1', 'Turn 2'],
+  const slider = host.querySelector('.wb-scrubber input[type=range]');
+  const segments = host.querySelectorAll(
+    '.wb-segment[title], .wb-segment > span',
   );
-  expect(segments.every((segment) => segment.textContent === '')).toBe(true);
+  const css = readFileSync(
+    resolve(
+      import.meta.dirname,
+      '../examples/quickstart/runtime/workbench.css',
+    ),
+    'utf8',
+  );
+
+  expect(flag?.textContent).toMatch(/^Turn 2 · /);
+  expect(slider?.getAttribute('aria-valuetext')).toMatch(/^Turn 2 · /);
+  expect(segments).toHaveLength(0);
   expect(flag?.classList.contains('wb-on-hover')).toBe(true);
+  expect(css).toMatch(/\.wb-scrubber:hover \.wb-flag\.wb-on-hover/);
+  expect(css).toMatch(/\.wb-scrubber:focus-within \.wb-flag\.wb-on-hover/);
   shell.dispose();
 });
 

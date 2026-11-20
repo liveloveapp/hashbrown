@@ -269,33 +269,6 @@ export async function measureWorkbenchAlignment(
             centres[0],
           ]);
       }
-
-      // 5. Turn labels start at their tick's line.
-      const ticks = [...scrubber.querySelectorAll('.wb-events button')]
-        .filter((tick) => rect(tick).width > 0)
-        .map((tick) => {
-          const box = rect(tick);
-          return box.left + px(tick, 'left', '::before');
-        });
-      const labels = [
-        ...scrubber.querySelectorAll('.wb-segment > span'),
-      ].filter(visible);
-      const offsets = labels.map((label) => {
-        const left = rect(label).left;
-        const nearest = ticks.reduce(
-          (best, tick) =>
-            Math.abs(tick - left) < Math.abs(best - left) ? tick : best,
-          Infinity,
-        );
-        return left - nearest;
-      });
-      measurements['turn label offsets from tick line'] = offsets.map(round);
-      offsets.forEach((offset, index) => {
-        if (!near(offset, 0))
-          failures.push(
-            `turn label ${index + 1} is ${round(offset)}px off its tick`,
-          );
-      });
     }
 
     // 6. Requests: shared left edge, aligned fact columns, grid table rows.

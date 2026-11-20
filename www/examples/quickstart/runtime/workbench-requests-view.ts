@@ -331,9 +331,8 @@ function heading(value: string): HTMLHeadingElement {
 }
 
 /**
- * Creates the Requests view: a table
- * of request and tool exchanges grouped by turn, and a detail pane with tabs
- * that apply to the selected row. The detail follows the playhead, showing the
+ * Creates the Requests view: a table of request and tool exchanges grouped by
+ * turn, and a detail pane with tabs that apply to the selected row. The detail follows the playhead, showing the
  * exchange under it, until the reader picks a row; the next cursor move that
  * the view did not make resumes following. A narrow inspector hides the strip
  * and the table and offers the rows from a header picker instead. Selection,

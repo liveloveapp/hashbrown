@@ -1753,12 +1753,16 @@ export function mountWorkbench(
           '--wb-fill',
           `${workbenchSegmentFill({ start, end }, selectedIndex, total)}%`,
         );
-        segment.title = `Turn ${turn}`;
-        segment.setAttribute('aria-label', `Turn ${turn}`);
         return segment;
       }),
     );
-    flag.textContent = total ? (activeMilestone?.label ?? '') : '';
+    const flagTurn = snapshot.events[selectedIndex]?.turn;
+    flag.textContent =
+      total && flagTurn !== undefined
+        ? [`Turn ${flagTurn}`, activeMilestone?.label]
+            .filter(Boolean)
+            .join(' · ')
+        : '';
     const flagPercent = workbenchTickPercent(selectedIndex, total);
     flag.style.left = total ? `${flagPercent}%` : '';
     const anchor = workbenchFlagAnchor(flagPercent);
