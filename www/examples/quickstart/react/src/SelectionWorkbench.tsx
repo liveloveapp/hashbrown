@@ -26,7 +26,6 @@ type PlanProps = { readonly title: string; readonly steps: readonly string[] };
 export function PlanSummary({ title, steps }: PlanProps) {
   return (
     <article className="wb-summary" aria-label="Plan summary">
-      <span className="wb-muted">Application-owned plan · summary</span>
       <h2>{title}</h2>
       <p>{steps.join(' → ')}</p>
     </article>
@@ -36,7 +35,6 @@ export function PlanSummary({ title, steps }: PlanProps) {
 export function PlanSteps({ title, steps }: PlanProps) {
   return (
     <article className="wb-summary" aria-label="Plan steps">
-      <span className="wb-muted">Application-owned plan · ordered steps</span>
       <h2>{title}</h2>
       <ol>
         {steps.map((step, index) => (

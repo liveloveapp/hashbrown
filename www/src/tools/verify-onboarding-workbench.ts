@@ -1,3 +1,4 @@
+import { seedOpenWorkbenchLayout } from './workbench-open-layout';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import { expectInspectionText } from './verify-inspector-modes';
 import {
@@ -14,6 +15,7 @@ import {
   type WorkbenchInstructionsTrace,
   workbenchOnboardingPrompts,
 } from '../../examples/quickstart/runtime/workbench-onboarding';
+import { selectInspectorTab } from './verify-inspector-tabs';
 
 type OnboardingLesson = 'first-plan' | 'conversation' | 'system-instructions';
 
@@ -43,6 +45,7 @@ export async function verifyOnboardingWorkbench(options: {
       ? { recordVideo: { dir: work, size: { width: 1600, height: 1000 } } }
       : {}),
   });
+  await seedOpenWorkbenchLayout(page);
   const base = `${framework}-${lesson}-${live ? 'live' : 'fixture'}`;
   const started = Date.now();
   const phases: Record<string, number> = {};
@@ -81,10 +84,7 @@ export async function verifyOnboardingWorkbench(options: {
       exact: true,
     });
     const tab = async (name: string) => {
-      await root
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name, exact: true })
-        .click();
+      await selectInspectorTab(root, name);
     };
     const revision = async () => {
       await tab('State');
@@ -290,10 +290,23 @@ export async function verifyOnboardingWorkbench(options: {
     await hold();
     const pause = root.getByRole('button', { name: 'Pause', exact: true });
     if (await pause.count()) await pause.click();
+    const streamingChat = root.locator('[data-replay] [data-wb-fresh=""]');
+    if (lesson === 'first-plan') {
+      // A mid-stream frame marks the newest streamed field in the chat card.
+      const seek = root.getByRole('slider', { name: 'Seek captured event' });
+      await seek.press('End');
+      for (let step = 0; step < 24; step += 1) {
+        await seek.press('ArrowLeft');
+        if (await streamingChat.count()) break;
+      }
+      await expect(streamingChat).toHaveCount(1);
+      expect((await streamingChat.innerText()).length).toBeGreaterThan(0);
+    }
     await root
       .getByRole('button', { name: /^Complete[.]/ })
       .first()
       .press('Enter');
+    if (lesson === 'first-plan') await expect(streamingChat).toHaveCount(0);
     await expect(
       lesson === 'first-plan'
         ? root.locator('[data-replay] .wb-summary').first()

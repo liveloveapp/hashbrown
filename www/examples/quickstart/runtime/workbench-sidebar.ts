@@ -32,7 +32,17 @@ export interface WorkbenchSidebarOptions {
   readonly onSelect: (id: string) => void;
   /** Starts a new conversation. */
   readonly onCreate: () => void;
-  /** Toggles the icon rail. */
+  /** The stacked narrow layout has no rail: the full sidebar always renders. */
+  readonly stacked?: boolean;
+  /** In rail mode, whether the full sidebar floats over the chat. View state only. */
+  readonly overlayOpen: boolean;
+  /** Opens the lesson overlay from the rail button. */
+  readonly onOpenOverlay: () => void;
+  /** Closes the lesson overlay, including after a choice is made in it. */
+  readonly onCloseOverlay: () => void;
+  /** "Keep open": pins the sidebar (saves `rail: false`) from the overlay. */
+  readonly onPin: () => void;
+  /** Collapses the open sidebar back to the icon rail. */
   readonly onToggleRail: () => void;
   /** Folds or unfolds one sidebar section. */
   readonly onToggleSection: (section: WorkbenchSidebarSection) => void;
@@ -113,8 +123,65 @@ export function renderWorkbenchSidebar(
   nav: HTMLElement,
   options: WorkbenchSidebarOptions,
 ): void {
-  const { layout } = options;
   const restore = focusedKey(nav);
+  if (options.stacked)
+    options = { ...options, layout: { ...options.layout, rail: false } };
+  if (options.layout.rail && options.overlayOpen) {
+    // The rail keeps only its button; the full sidebar floats over it.
+    const rail = railButton(options, 'Close lessons', options.onCloseOverlay);
+    rail.setAttribute('aria-expanded', 'true');
+    const top = document.createElement('div');
+    top.className = 'wb-nav-top';
+    top.append(rail);
+    const overlay = document.createElement('div');
+    overlay.className = 'wb-nav-overlay';
+    overlay.setAttribute('role', 'group');
+    overlay.setAttribute('aria-label', 'Lessons');
+    overlay.append(
+      ...buildSidebar({
+        ...options,
+        layout: { ...options.layout, rail: false },
+        pin: true,
+        onSelect: (id) => {
+          options.onCloseOverlay();
+          options.onSelect(id);
+        },
+        onCreate: () => {
+          options.onCloseOverlay();
+          options.onCreate();
+        },
+        onChooseLesson: options.onCloseOverlay,
+      }),
+    );
+    nav.replaceChildren(top, overlay);
+  } else {
+    nav.replaceChildren(...buildSidebar(options));
+  }
+  if (restore)
+    [...nav.querySelectorAll<HTMLElement>('[data-nav-key]')]
+      .find((node) => node.dataset.navKey === restore)
+      ?.focus();
+}
+
+function railButton(
+  options: WorkbenchSidebarOptions,
+  label: string,
+  onClick: () => void,
+): HTMLButtonElement {
+  const rail = actionButton('wb-rail-toggle', 'rail', onClick);
+  rail.setAttribute('aria-label', label);
+  rail.title = label;
+  rail.append(workbenchIcon('sidebar'));
+  return rail;
+}
+
+type SidebarBuild = WorkbenchSidebarOptions & {
+  readonly pin?: boolean;
+  readonly onChooseLesson?: () => void;
+};
+
+function buildSidebar(options: SidebarBuild): HTMLElement[] {
+  const { layout } = options;
   const prefix = options.idPrefix ?? 'wb';
   const top = document.createElement('div');
   top.className = 'wb-nav-top';
@@ -123,15 +190,18 @@ export function renderWorkbenchSidebar(
     workbenchIcon('plus'),
     'New conversation',
   );
-  const rail = actionButton('wb-rail-toggle', 'rail', options.onToggleRail);
-  rail.setAttribute(
-    'aria-label',
-    layout.rail ? 'Expand sidebar' : 'Collapse sidebar',
-  );
-  rail.title = layout.rail ? 'Expand sidebar' : 'Collapse sidebar';
-  rail.setAttribute('aria-expanded', String(!layout.rail));
-  rail.append(workbenchIcon('sidebar'));
-  top.append(...(options.hideCreate ? [] : [cta]), rail);
+  const rail = options.pin
+    ? railButton(options, 'Keep open', options.onPin)
+    : railButton(
+        options,
+        layout.rail ? 'Expand sidebar' : 'Collapse sidebar',
+        layout.rail ? options.onOpenOverlay : options.onToggleRail,
+      );
+  if (options.pin) rail.dataset.navKey = 'pin';
+  else rail.setAttribute('aria-expanded', String(!layout.rail));
+  // The rail is lesson icons only; New conversation and the conversation list
+  // live in the overlay.
+  top.append(...(options.hideCreate || layout.rail ? [] : [cta]), rail);
 
   function group(
     section: WorkbenchSidebarSection,
@@ -196,6 +266,8 @@ export function renderWorkbenchSidebar(
             workbenchIcon(workbenchLessonIcons[lesson]),
             meta?.title ?? lesson,
           );
+          if (options.onChooseLesson)
+            link.addEventListener('click', options.onChooseLesson);
           if (lesson === options.currentLesson)
             link.setAttribute('aria-current', 'page');
           links.append(link);
@@ -216,13 +288,11 @@ export function renderWorkbenchSidebar(
     lessonGroups.push(group('start', 'Get started', topic));
   }
 
-  nav.replaceChildren(
+  return [
     top,
-    group('conversations', 'Conversations', conversations),
+    ...(layout.rail
+      ? []
+      : [group('conversations', 'Conversations', conversations)]),
     ...lessonGroups,
-  );
-  if (restore)
-    [...nav.querySelectorAll<HTMLElement>('[data-nav-key]')]
-      .find((node) => node.dataset.navKey === restore)
-      ?.focus();
+  ];
 }

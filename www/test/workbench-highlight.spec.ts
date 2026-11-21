@@ -2,6 +2,7 @@
 import { expect, test } from 'vitest';
 import {
   renderWorkbenchCode,
+  renderWorkbenchFreshJson,
   tokenizeJson,
   tokenizeMarkdown,
   workbenchCodeLanguage,
@@ -135,4 +136,63 @@ test('renders tokens as spans that keep the exact text', () => {
   expect(host.querySelector('.wb-tok-number')?.textContent).toBe('2');
   expect(host.querySelectorAll('span:not([class^="wb-tok-"])')).toHaveLength(0);
   expect(renderWorkbenchCode('plain words', 'text').childNodes).toHaveLength(1);
+});
+
+test('the fresh suffix is marked and the text is unchanged', () => {
+  const value = { steps: ['Outline', 'Record the'] };
+
+  const fragment = renderWorkbenchFreshJson(value, {
+    path: 'steps.1',
+    text: 'ord the',
+  });
+
+  expect(fragment.textContent).toBe(JSON.stringify(value, null, 2));
+  expect(fragment.querySelector('mark.wb-fresh')!.textContent).toBe('ord the');
+});
+
+test('no fresh text renders no mark', () => {
+  const value = { a: 'b' };
+
+  const fragment = renderWorkbenchFreshJson(value, null);
+
+  expect(fragment.querySelector('mark')).toBeNull();
+  expect(fragment.textContent).toBe(JSON.stringify(value, null, 2));
+});
+
+test('empty fresh text or an unknown path renders no mark', () => {
+  const value = { a: 'b' };
+
+  const empty = renderWorkbenchFreshJson(value, { path: 'a', text: '' });
+  const missing = renderWorkbenchFreshJson(value, { path: 'z', text: 'b' });
+
+  expect(empty.querySelector('mark')).toBeNull();
+  expect(missing.querySelector('mark')).toBeNull();
+});
+
+test('text with quotes and escapes is marked correctly', () => {
+  const value = { note: 'a say "hi"\n' };
+
+  const fragment = renderWorkbenchFreshJson(value, {
+    path: 'note',
+    text: 'say "hi"\n',
+  });
+
+  expect(fragment.textContent).toBe(JSON.stringify(value, null, 2));
+  expect(fragment.querySelector('mark.wb-fresh')!.textContent).toBe(
+    'say \\"hi\\"\\n',
+  );
+});
+
+test('a settling mark carries the settle class', () => {
+  const value = { a: 'Hello' };
+
+  const fragment = renderWorkbenchFreshJson(
+    value,
+    { path: 'a', text: 'llo' },
+    { settle: true },
+  );
+
+  const mark = fragment.querySelector('mark')!;
+  expect(mark.className).toBe('wb-fresh wb-fresh-settle');
+  expect(mark.textContent).toBe('llo');
 });

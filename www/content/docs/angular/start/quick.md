@@ -126,7 +126,6 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   selector: 'app-plan-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<article class="wb-summary" aria-label="Summary card">
-    <span class="wb-muted">SummaryCard · trusted component</span>
     <h2>{{ title() || 'Building your plan…' }}</h2>
     <ol>
       @for (step of steps(); track $index) {
@@ -144,7 +143,7 @@ export class PlanCard {
 
 </hb-code-example>
 
-The card receives a title and an ordered list of steps. Those bindings render ordinary text. Its optional presentation label and footer belong to the application. Later lessons use the footer for an acceptance action; the first-plan example supplies no footer.
+The card receives a title and an ordered list of steps. Those bindings render ordinary text. Its optional footer belongs to the application. Later lessons use the footer for an acceptance action; the first-plan example supplies no footer.
 
 ## Expose the component
 

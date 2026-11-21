@@ -21,6 +21,7 @@ import {
   threadplaneLiveRecordingCues,
   threadplaneLiveSettings,
 } from './docs-threadplane-live-recording';
+import { selectInspectorTab } from './verify-inspector-tabs';
 
 const settings = threadplaneLiveSettings(process.env);
 const modes = selectThreadplaneModes(process.env['DOCS_DEMO_MODES']);
@@ -259,10 +260,7 @@ async function demonstrate(page: Page, sdk: Sdk) {
   await composer(page, sdk).fill(secondPrompt);
   await page.waitForTimeout(2300);
   phase('followup');
-  await page
-    .getByRole('tablist', { name: 'Inspector views', exact: true })
-    .getByRole('tab', { name: 'JSON', exact: true })
-    .click();
+  await selectInspectorTab(page, 'JSON');
   await send(page, sdk).click();
   await expect.poll(() => requests.length, { timeout: 90000 }).toBe(before + 2);
   await expect
@@ -301,21 +299,12 @@ async function demonstrate(page: Page, sdk: Sdk) {
   ]);
   await page.waitForTimeout(2600);
   phase('secondComplete');
-  await page
-    .getByRole('tablist', { name: 'Inspector views', exact: true })
-    .getByRole('tab', { name: 'JSON', exact: true })
-    .click();
+  await selectInspectorTab(page, 'JSON');
   await page.waitForTimeout(2300);
-  await page
-    .getByRole('tablist', { name: 'Inspector views', exact: true })
-    .getByRole('tab', { name: 'Requests', exact: true })
-    .click();
+  await selectInspectorTab(page, 'Requests');
   await page.waitForTimeout(2300);
   phase('inspected');
-  await page
-    .getByRole('tablist', { name: 'Inspector views', exact: true })
-    .getByRole('tab', { name: 'State', exact: true })
-    .click();
+  await selectInspectorTab(page, 'State');
   await page.waitForTimeout(2600);
   phase('replay');
   const domSamples = await page.evaluate(

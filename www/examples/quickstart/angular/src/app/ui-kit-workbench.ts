@@ -251,7 +251,6 @@ export class UiKitWorkbenchAnswer {
     data-ui-component="SummaryCard"
     aria-label="Summary card"
   >
-    <span class="wb-muted">SummaryCard · trusted component</span>
     <h2>{{ title() }}</h2>
     <ol>
       @for (step of steps(); track $index) {
@@ -320,7 +319,6 @@ export class KitSummaryCard {
     data-ui-component="StepsCard"
     aria-label="Steps card"
   >
-    <span class="wb-muted">StepsCard · trusted component</span>
     <h2>{{ title() }}</h2>
     <ol>
       @for (step of steps(); track $index) {

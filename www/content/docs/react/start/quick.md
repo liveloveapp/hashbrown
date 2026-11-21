@@ -126,13 +126,9 @@ export function PlanCard(props: {
   readonly title: string;
   readonly steps: string[];
   readonly children?: ReactNode;
-  readonly label?: string;
 }) {
   return (
     <article className="wb-summary" aria-label="Summary card">
-      <span className="wb-muted">
-        {props.label ?? 'SummaryCard · trusted component'}
-      </span>
       <h2>{props.title || 'Building your plan…'}</h2>
       <ol>
         {(props.steps ?? []).map((step, index) => (
@@ -147,7 +143,7 @@ export function PlanCard(props: {
 
 </hb-code-example>
 
-The card receives a title and an ordered list of steps. Those bindings render ordinary text. Its optional presentation label and footer belong to the application. Later lessons use the footer for an acceptance action; the first-plan example supplies no footer.
+The card receives a title and an ordered list of steps. Those bindings render ordinary text. Its optional footer belongs to the application. Later lessons use the footer for an acceptance action; the first-plan example supplies no footer.
 
 ## Expose the component
 

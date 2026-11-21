@@ -141,7 +141,6 @@ export class LocalModelsWorkbenchSession {
   selector: 'app-local-models-workbench-plan',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<article class="wb-summary" aria-label="Summary card">
-    <span class="wb-muted">Typed plan · application component</span>
     <h2>{{ title() || 'Building your plan…' }}</h2>
     <ol>
       @for (step of steps(); track $index) {

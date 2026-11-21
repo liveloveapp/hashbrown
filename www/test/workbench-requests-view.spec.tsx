@@ -154,7 +154,7 @@ function pointer(target: EventTarget, type: string, clientX: number) {
   );
 }
 
-test('renders the overview, a turn-grouped table and follows the latest request', () => {
+test('renders a turn-grouped table and follows the latest request', () => {
   const { host, store, shell } = mountRequests();
 
   recordToolTurn(store);
@@ -172,9 +172,10 @@ test('renders the overview, a turn-grouped table and follows the latest request'
     'Events',
     'Waterfall',
   ]);
+  expect(host.querySelector('.wb-requests-overview')).toBeNull();
   expect(
     host.querySelector('[role=slider][aria-label="Seek request timeline"]'),
-  ).not.toBeNull();
+  ).toBeNull();
   expect(
     host.querySelector(
       '.wb-requests-table tr[aria-selected=true] button[data-exchange]',
@@ -188,6 +189,18 @@ test('renders the overview, a turn-grouped table and follows the latest request'
   expect(host.querySelector('.wb-requests-table')?.textContent).toContain(
     'POST /api/workbench/tools',
   );
+  shell.dispose();
+});
+
+test('the Requests view has no overview timeline', () => {
+  const { host, store, shell } = mountRequests();
+
+  recordToolTurn(store);
+
+  expect(host.querySelector('.wb-requests-overview')).toBeNull();
+  expect(host.querySelector('.wb-requests-track')).toBeNull();
+  expect(host.querySelector('.wb-requests-flag')).toBeNull();
+  expect(host.querySelector('.wb-requests-table')).not.toBeNull();
   shell.dispose();
 });
 
@@ -451,51 +464,6 @@ test('roves between row buttons with the arrow keys', () => {
   shell.dispose();
 });
 
-test('scrubs from the overview strip', () => {
-  let now = 0;
-  const clock = vi
-    .spyOn(performance, 'now')
-    .mockImplementation(() => (now += 10));
-  const { host, store, shell } = mountRequests();
-  recordToolTurn(store);
-  const total = store.getSnapshot().events.length;
-  const slider = host.querySelector<HTMLElement>(
-    '[role=slider][aria-label="Seek request timeline"]',
-  ) as HTMLElement;
-  vi.spyOn(slider, 'getBoundingClientRect').mockReturnValue({
-    left: 0,
-    right: 1000,
-    width: 1000,
-  } as DOMRect);
-  const before = slider.getAttribute('aria-valuenow');
-
-  pointer(slider, 'pointerdown', 0);
-  const atStart = store.getSnapshot().cursor;
-  pointer(slider, 'pointermove', 1000);
-  pointer(slider, 'pointerup', 1000);
-  const atEnd = store.getSnapshot().cursor;
-  press(slider, 'Home');
-  const home = store.getSnapshot().cursor;
-  const right = press(slider, 'ArrowRight');
-  const stepped = store.getSnapshot().cursor;
-  press(slider, 'End');
-
-  expect(before).toBe(String(total - 1));
-  expect(slider.getAttribute('aria-valuemax')).toBe(String(total - 1));
-  expect(slider.tabIndex).toBe(0);
-  expect(atStart).toBe(0);
-  expect(atEnd).toBe(total - 1);
-  expect(home).toBe(0);
-  expect(right.defaultPrevented).toBe(true);
-  expect(stepped).toBe(1);
-  expect(store.getSnapshot().cursor).toBe(total - 1);
-  expect(slider.getAttribute('aria-valuenow')).toBe(String(total - 1));
-  expect(slider.getAttribute('aria-valuetext')).toContain(`${total}`);
-  expect(document.activeElement).toBe(slider);
-  clock.mockRestore();
-  shell.dispose();
-});
-
 test('auto-selects a repeat HTTP error after the conversation is cleared', () => {
   const { host, store, shell } = mountRequests();
   recordDeniedTurn(store);
@@ -588,50 +556,6 @@ test('selects a row while busy without seeking, since loading ignores seeks', ()
   shell.dispose();
 });
 
-test('stays live when ArrowRight or End is pressed at the live end', () => {
-  const { host, store, shell } = mountRequests();
-  recordToolTurn(store);
-  const slider = host.querySelector<HTMLElement>(
-    '[role=slider][aria-label="Seek request timeline"]',
-  ) as HTMLElement;
-
-  press(slider, 'ArrowRight');
-  const afterRight = store.getSnapshot().cursor;
-  press(slider, 'End');
-
-  expect(afterRight).toBeNull();
-  expect(store.getSnapshot().cursor).toBeNull();
-  shell.dispose();
-});
-
-test('labels each turn band with its start time on the axis', () => {
-  let now = 0;
-  const clock = vi
-    .spyOn(performance, 'now')
-    .mockImplementation(() => (now += 100));
-  const { host, store, shell } = mountRequests();
-
-  recordToolTurn(store);
-  recordDeniedTurn(store, 'Again');
-
-  const labels = [...host.querySelectorAll('.wb-requests-band > span')].map(
-    (label) => label.textContent,
-  );
-  const starts = [1, 2].map(
-    (turn) =>
-      store.getSnapshot().events.find((event) => event.turn === turn)
-        ?.elapsedMs ?? 0,
-  );
-  expect(labels).toEqual(
-    starts.map(
-      (ms, index) => `Turn ${index + 1} · ${(ms / 1000).toFixed(1)} s`,
-    ),
-  );
-  expect(starts[1]).toBeGreaterThan(starts[0]);
-  clock.mockRestore();
-  shell.dispose();
-});
-
 test('keeps the tab buttons and a static panel in place while the selected request streams', () => {
   const { host, store, shell } = mountRequests();
   store.send('Plan');
@@ -655,21 +579,6 @@ test('keeps the tab buttons and a static panel in place while the selected reque
   expect(host.querySelector('[aria-label="Copy request"]')).toBe(copyBefore);
   expect(detailTab(host, 'Response').textContent).toBe('Response 3');
   expect(detailTab(host, 'Request').getAttribute('aria-selected')).toBe('true');
-  shell.dispose();
-});
-
-test('omits the turn-0 band that history frames would draw', () => {
-  const { host, store, shell } = mountRequests();
-  store.record('history', { messages: [] });
-
-  recordToolTurn(store);
-
-  const labels = [...host.querySelectorAll('.wb-requests-band > span')].map(
-    (label) => label.textContent,
-  );
-  expect(store.getSnapshot().events[0].turn).toBe(0);
-  expect(labels).toHaveLength(1);
-  expect(labels[0]).toMatch(/^Turn 1 · /);
   shell.dispose();
 });
 
@@ -894,25 +803,6 @@ test('the picker marks current and future rows and Escape closes it', () => {
   expect(host.querySelector('[role=listbox]')).toBeNull();
   expect(document.activeElement).toBe(picker);
   expect(host.querySelector('[data-detail]')).not.toBeNull();
-  shell.dispose();
-});
-
-test('the strip flag reads the same as the main timeline flag', () => {
-  const { host, store, shell } = mountRequests();
-  recordToolTurn(store);
-  const flags = () => [
-    host.querySelector('.wb-requests-flag')?.textContent,
-    host.querySelector('.wb-flag')?.textContent,
-  ];
-
-  store.seek(turnRequestIndex(store, 1));
-  const atRequest = flags();
-  store.seek(store.getSnapshot().events.length - 2);
-  const nearEnd = flags();
-
-  expect(atRequest[0]).toBe(atRequest[1]);
-  expect(atRequest[0]).not.toBe('');
-  expect(nearEnd[0]).toBe(nearEnd[1]);
   shell.dispose();
 });
 

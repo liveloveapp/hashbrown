@@ -1,9 +1,11 @@
 import { readInspectorJson, showInspectorMode } from './verify-inspector-modes';
+import { seedOpenWorkbenchLayout } from './workbench-open-layout';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import type { RunAgentInput } from '@ag-ui/core';
 import { type Browser, expect } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { openLessons, selectInspectorTab } from './verify-inspector-tabs';
 
 /** Exercises actual SDK workflow clients and their synchronized read-only captures. */
 export async function verifyWorkflowWorkbench(options: {
@@ -29,6 +31,7 @@ export async function verifyWorkflowWorkbench(options: {
       ? { recordVideo: { dir: work, size: { width: 1600, height: 1000 } } }
       : {}),
   });
+  await seedOpenWorkbenchLayout(page);
   const base = `${framework}-${lesson}-${live ? 'live' : 'fixture'}`;
   const started = Date.now();
   const phases: Record<string, number> = {};
@@ -59,13 +62,9 @@ export async function verifyWorkflowWorkbench(options: {
     const approvals = root.locator('.wb-workflow-approvals');
     const activities = root.locator('.wb-workflow-activity');
     const capturedSection = root.locator('.wb-inspector [data-captured]');
-    const caption = capturedSection.locator('.wb-caption');
     const inspection = capturedSection.locator('.wb-inspection');
     const tab = async (name: string) => {
-      await root
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name, exact: true })
-        .click();
+      await selectInspectorTab(root, name);
     };
     const pairedWorkflowEvidence = async (
       name: 'State' | 'Activities' | 'Interrupts',
@@ -93,7 +92,6 @@ export async function verifyWorkflowWorkbench(options: {
         await expect(capturedSection.locator('h3')).toContainText(
           headings[name],
         );
-      await expect(caption).toContainText('Captured SDK observations');
       expect(interpreted).not.toHaveProperty('sdk');
       if (name === 'State') {
         expect(capturedValue).not.toHaveProperty('messages');
@@ -580,6 +578,7 @@ export async function verifyWorkflowWorkbench(options: {
       expect(count()).toBe(beforeHistory);
       await expect(root.locator('.wb-workflow-reply').first()).toBeVisible();
       const beforeNavigation = count();
+      await openLessons(root);
       await root.locator('.wb-lessons a[href$="lesson=tools"]').click();
       await expect(page.locator('.wb:visible [data-send]')).toBeEnabled();
       expect(count()).toBe(beforeNavigation);

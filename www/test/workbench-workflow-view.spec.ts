@@ -5,9 +5,11 @@ import { getWorkbenchLesson } from '../examples/quickstart/runtime/workbench-les
 import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
 import {
   chooseInspectorMode,
+  clickInspectorTab,
   inspectorPanelText,
   inspectorPre,
   inspectorSections,
+  inspectorTabNames,
 } from './workbench-inspector-helpers';
 
 test('activity and approval lessons focus their actual SDK inspector with application-owned UI', () => {
@@ -118,15 +120,8 @@ test('paired workflow inspector follows the selected SDK frame and local form hi
   expect(interpreted.batchId).toBe(captured.pending.id);
   expect(interpreted.applicationForm.answers).toEqual({ first: 'approve' });
   expect(interpreted).not.toHaveProperty('sdk');
-  expect(host.querySelector('.wb-caption')?.textContent).toContain(
-    'separately recorded application form drafts',
-  );
   function tab(name: string) {
-    const control = [
-      ...host.querySelectorAll<HTMLButtonElement>('[role=tab]'),
-    ].find((node) => node.textContent === name);
-    if (!control) throw new Error(`Missing tab ${name}`);
-    control.click();
+    clickInspectorTab(host, name);
     return inspectorSections(host, name);
   }
   const state = tab('State');
@@ -197,11 +192,7 @@ test('paired workflow inspector follows the selected SDK frame and local form hi
   expect(host.querySelectorAll('[aria-label="Inspector view"]')).toHaveLength(
     1,
   );
-  expect(
-    host
-      .querySelector('[aria-label="Inspector views"]')
-      ?.querySelectorAll('[role=tab]'),
-  ).toHaveLength(6);
+  expect(inspectorTabNames(host)).toHaveLength(6);
   shell.dispose();
 });
 

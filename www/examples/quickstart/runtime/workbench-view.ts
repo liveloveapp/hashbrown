@@ -15,8 +15,16 @@ import {
 } from './workbench-history';
 import {
   renderWorkbenchCode,
+  renderWorkbenchFreshJson,
   workbenchCodeLanguage,
 } from './workbench-highlight';
+import {
+  type WorkbenchFresh,
+  workbenchFreshAt,
+  workbenchResolvedProps,
+  workbenchSettleAt,
+} from './workbench-fresh';
+import { markWorkbenchFresh } from './workbench-fresh-mark';
 import {
   isWorkbenchWorkflowProgress,
   workbenchWorkflowPrompts,
@@ -34,6 +42,7 @@ import {
 } from './workbench';
 import {
   createWorkbenchLayoutStore,
+  workbenchExpandSection,
   workbenchLayout,
   type WorkbenchLayoutStore,
 } from './workbench-layout';
@@ -41,9 +50,15 @@ import {
   getWorkbenchLesson,
   isWorkbenchLoopbackLesson,
   type WorkbenchLesson,
+  workbenchLessonGroups,
   type WorkbenchLessonId,
   workbenchLessons,
 } from './workbench-lessons';
+import { createWorkbenchMoreMenu } from './workbench-more-menu';
+import {
+  workbenchInspectorTabs,
+  workbenchTabLayout,
+} from './workbench-tab-rule';
 import { workbenchIcon, type WorkbenchIconName } from './workbench-icons';
 import {
   adjacentTurnIndex,
@@ -90,6 +105,7 @@ import {
 } from './workbench-timeline';
 import {
   isWorkbenchPlan,
+  type WorkbenchFrame,
   type WorkbenchSnapshot,
   type WorkbenchStore,
 } from './workbench';
@@ -543,28 +559,86 @@ export function mountWorkbench(
   const header = element('header', '', 'wb-header');
   header.append(
     element('strong', 'Hashbrown'),
-    element('span', commands.lesson?.title ?? 'Conversation workbench'),
     element('span', commands.framework, 'wb-muted'),
   );
-  const provenance = element('span', 'Awaiting source', 'wb-muted');
+  const provenance = element(
+    'span',
+    'Awaiting source',
+    'wb-muted wb-visually-hidden',
+  );
   provenance.dataset.source = '';
   header.append(provenance);
+  if (embed) header.classList.add('wb-visually-hidden');
   const layout = element('div', '', 'wb-layout');
   const nav = element('nav', '', 'wb-nav');
   nav.setAttribute('aria-label', 'Examples and conversations');
   let sidebarKey: string | undefined;
+  // View state only: the lesson overlay is never saved.
+  let overlayOpen = false;
+  // At 800px and under the sidebar is a strip, not a rail: no overlay there.
+  const stackedQuery = embed
+    ? undefined
+    : globalThis.matchMedia?.('(max-width: 800px)');
   function renderLayout() {
     const current = layoutStore.get();
     layout.style.setProperty('--wb-chat', `${current.split}fr`);
     layout.style.setProperty('--wb-inspector', `${100 - current.split}fr`);
-    const key = JSON.stringify([current.rail, current.collapsed]);
+    const key = JSON.stringify([
+      current.rail,
+      current.collapsed,
+      overlayOpen,
+      !!stackedQuery?.matches,
+    ]);
     if (key !== sidebarKey) renderNavigation();
   }
+  function railToggle() {
+    return nav.querySelector<HTMLElement>('.wb-nav-top .wb-rail-toggle');
+  }
+  function openOverlay() {
+    if (embed || overlayOpen || !layoutStore.get().rail) return;
+    if (stackedQuery?.matches) return;
+    overlayOpen = true;
+    renderNavigation();
+    const target =
+      nav.querySelector<HTMLElement>('.wb-nav-overlay [aria-current="page"]') ??
+      nav.querySelector<HTMLElement>('.wb-nav-overlay [data-nav-key="pin"]');
+    target?.focus();
+  }
+  function closeOverlay(returnFocus: boolean) {
+    if (!overlayOpen) return;
+    overlayOpen = false;
+    renderNavigation();
+    if (returnFocus) railToggle()?.focus();
+  }
+  // An outside click dismisses the overlay (Escape is handled in onShortcut).
+  function onOverlayClick(event: MouseEvent) {
+    if (!overlayOpen) return;
+    // The path is fixed at dispatch, so a control re-rendered by this click still counts as inside.
+    if (event.composedPath().includes(nav)) return;
+    const active = document.activeElement;
+    closeOverlay(!active || active === document.body);
+  }
+  document.addEventListener('click', onOverlayClick);
+  // Tabbing out of the overlay dismisses it; focus goes where the reader tabbed.
+  function onNavFocusOut(event: FocusEvent) {
+    const next = event.relatedTarget;
+    if (overlayOpen && next instanceof Node && !nav.contains(next))
+      closeOverlay(false);
+  }
+  nav.addEventListener('focusout', onNavFocusOut);
+  stackedQuery?.addEventListener?.('change', renderLayout);
   function renderNavigation() {
     if (embed) return;
     const current = layoutStore.get();
-    sidebarKey = JSON.stringify([current.rail, current.collapsed]);
+    if (!current.rail || stackedQuery?.matches) overlayOpen = false;
+    sidebarKey = JSON.stringify([
+      current.rail,
+      current.collapsed,
+      overlayOpen,
+      !!stackedQuery?.matches,
+    ]);
     root.classList.toggle('wb-rail', current.rail);
+    root.classList.toggle('wb-overlay-open', overlayOpen);
     renderWorkbenchSidebar(nav, {
       framework: commands.framework,
       fixedTopic: options.fixedSidebarTopic,
@@ -591,6 +665,14 @@ export function mountWorkbench(
           prompt.value = prompts[0];
         }
       },
+      stacked: !!stackedQuery?.matches,
+      overlayOpen,
+      onOpenOverlay: openOverlay,
+      onCloseOverlay: () => closeOverlay(true),
+      onPin: () => {
+        overlayOpen = false;
+        layoutStore.set({ rail: false });
+      },
       onToggleRail: () => layoutStore.set({ rail: !layoutStore.get().rail }),
       onToggleSection: (section) => {
         const { collapsed } = layoutStore.get();
@@ -616,17 +698,13 @@ export function mountWorkbench(
   const chat = element('section', '', 'wb-chat wb-panel');
   chat.setAttribute('aria-label', 'Conversation');
   const chatHeader = element('div', '', 'wb-panel-head');
-  const status = element('span', 'Ready', 'wb-muted');
+  if (embed) chatHeader.classList.add('wb-visually-hidden');
+  const status = element('span', 'Ready', 'wb-muted wb-visually-hidden');
   status.setAttribute('role', 'status');
   status.setAttribute('aria-live', 'polite');
   status.setAttribute('aria-atomic', 'true');
   chatHeader.append(
-    element(
-      'h1',
-      commands.lesson?.id === 'javascript-runtime'
-        ? 'Calculate from your plan'
-        : 'A plan, built together',
-    ),
+    element('h1', commands.lesson?.title ?? 'Conversation workbench'),
     status,
   );
   const live = element('div', '', 'wb-feed');
@@ -639,12 +717,13 @@ export function mountWorkbench(
   replay.dataset.replay = '';
   replay.hidden = true;
   const form = element('form', '', 'wb-composer');
-  const label = element('label', 'Your message');
+  const label = element('label', 'Your message', 'wb-visually-hidden');
   label.htmlFor = `${instanceId}-prompt`;
   const prompt = element('textarea');
   prompt.id = `${instanceId}-prompt`;
   prompt.value = prompts[0];
   prompt.rows = 2;
+  prompt.placeholder = 'Ask a follow-up';
   const actions = element('div', '', 'wb-actions');
   const send = element('button', 'Send', 'wb-primary');
   send.type = 'submit';
@@ -658,6 +737,8 @@ export function mountWorkbench(
     prompt.value = prompts[1];
     prompt.focus();
   });
+  first.classList.add('wb-quiet');
+  followup.classList.add('wb-quiet');
   actions.append(first, followup, send, stop);
   form.append(label, prompt, actions);
   if (commands.lesson?.id === 'javascript-runtime') {
@@ -713,6 +794,7 @@ export function mountWorkbench(
   );
   const inspector = element('section', '', 'wb-panel wb-inspector');
   inspector.setAttribute('aria-label', 'Inspector');
+  const tabsRow = element('div', '', 'wb-tabs-row');
   const tabs = element('div', '', 'wb-tabs');
   tabs.setAttribute('role', 'tablist');
   tabs.setAttribute('aria-label', 'Inspector views');
@@ -733,7 +815,7 @@ export function mountWorkbench(
   let requestsIssue: HTMLElement | undefined;
   const captured = element('section', '', 'wb-section');
   captured.dataset.captured = '';
-  const capturedHeading = element('h3');
+  const capturedHeading = element('h3', '', 'wb-visually-hidden');
   const modeMemory = createInspectorModeMemory();
   // Long-lived so branches the reader opened or closed survive re-renders and scrubbing.
   const stateTree = createWorkbenchTree({ label: 'Application state' });
@@ -744,76 +826,60 @@ export function mountWorkbench(
       render();
     },
   });
-  const capturedHeader = element('header', '', 'wb-section-head');
-  capturedHeader.append(capturedHeading, modeControl.element);
   const inspection = element('div', '', 'wb-inspection');
-  const caption = element('p', '', 'wb-caption');
-  captured.append(capturedHeader, inspection, caption);
+  captured.append(capturedHeading, inspection);
   pair.append(captured);
   let tab = commands.lesson?.inspector ?? 'JSON';
-  const tabButtons = (
-    options.inspectorTabs ?? [
-      ['json-parser', 'natural-forms'].includes(commands.lesson?.id ?? '')
-        ? 'JSON'
-        : ['text', 'workflow', 'history'].includes(
-              commands.lesson?.format ?? '',
-            )
-          ? commands.lesson?.id === 'prose'
-            ? 'Markdown'
-            : 'Text'
-          : 'JSON',
-      'Requests',
-      ...(commands.lesson?.id === 'local-models' ? ['Model'] : []),
-      ...(commands.lesson?.id === 'javascript-runtime'
-        ? ['Code', 'Runtime']
-        : []),
-      ...(['ui-kits', 'ui-chatbot'].includes(commands.lesson?.id ?? '')
-        ? ['Kit', 'Schema']
-        : []),
-      ...(commands.lesson?.format === 'history'
-        ? commands.lesson.id === 'agent-decisions'
-          ? ['History', 'Agent']
-          : ['json-parser', 'natural-forms'].includes(commands.lesson.id)
-            ? [
-                'History',
-                'Parser',
-                ...(commands.lesson.id === 'natural-forms' ? ['Form'] : []),
-                'Schema',
-              ]
-            : isWorkbenchLoopbackLesson(commands.lesson.id)
-              ? ['History', 'Server', 'Access']
-              : ['History', 'Saved text']
-        : []),
-      ...(['structured', 'predictions', 'selection'].includes(
-        commands.lesson?.format ?? '',
-      )
-        ? ['Schema']
-        : []),
-      ...(commands.lesson?.id === 'request-transformation'
-        ? ['Transform']
-        : []),
-      ...(commands.lesson?.id === 'system-instructions'
-        ? ['Instructions']
-        : []),
-      'UI',
-      'State',
-      ...(commands.lesson?.format === 'workflow'
-        ? ['Activities', 'Interrupts']
-        : []),
-    ]
-  ).map((name) => {
-    const item = button(name, () => {
+  // A consumer-supplied list bypasses the rule: those tabs show with no More menu.
+  const allTabs =
+    options.inspectorTabs ?? workbenchInspectorTabs(commands.lesson);
+  /** The tab the reader chose from More; it joins the bar until another replaces it. */
+  let promoted: string | undefined;
+  const tabLayout = (): { bar: readonly string[]; more: readonly string[] } => {
+    if (options.inspectorTabs || !commands.lesson)
+      return { bar: allTabs, more: [] };
+    const base = workbenchTabLayout(commands.lesson, allTabs);
+    return promoted !== undefined && base.more.includes(promoted)
+      ? {
+          bar: [...base.bar, promoted],
+          more: base.more.filter((name) => name !== promoted),
+        }
+      : base;
+  };
+  let tabButtons: readonly HTMLButtonElement[] = [];
+  const moreMenu = createWorkbenchMoreMenu({
+    idPrefix: instanceId,
+    onSelect: (name) => {
+      promoted = name;
       tab = name;
       render();
-    });
-    item.id = `${instanceId}-tab-${name.toLowerCase()}`;
-    item.setAttribute('role', 'tab');
-    item.setAttribute('aria-controls', tabPanel.id);
-    return item;
+      tabButtons.find((item) => item.textContent === name)?.focus();
+    },
   });
-  tabs.append(...tabButtons);
+  const syncTabs = (): void => {
+    const { bar, more } = tabLayout();
+    if (
+      tabButtons.length !== bar.length ||
+      tabButtons.some((item, index) => item.textContent !== bar[index])
+    ) {
+      tabButtons = bar.map((name) => {
+        const item = button(name, () => {
+          tab = name;
+          render();
+        });
+        item.id = `${instanceId}-tab-${name.toLowerCase()}`;
+        item.setAttribute('role', 'tab');
+        item.setAttribute('aria-controls', tabPanel.id);
+        return item;
+      });
+      tabs.replaceChildren(...tabButtons);
+    }
+    moreMenu.sync(more);
+  };
+  syncTabs();
   const inspectorTabs = createWorkbenchTabs(tabs, tabPanel);
-  inspector.append(tabs, tabPanel);
+  tabsRow.append(tabs, moreMenu.element, modeControl.element);
+  inspector.append(tabsRow, tabPanel);
   const footer = element('section', '', 'wb-playback');
   footer.setAttribute('aria-label', 'Captured timeline');
   let rawEvents = false;
@@ -875,7 +941,7 @@ export function mountWorkbench(
   const timing = element('span', 'No captured events', 'wb-time wb-mono');
   const segments = element('div', '', 'wb-segments');
   const events = element('div', '', 'wb-events');
-  const flag = element('span', '', 'wb-flag');
+  const flag = element('span', '', 'wb-flag wb-on-hover');
   flag.setAttribute('aria-hidden', 'true');
   const previous = iconButton('Previous event', 'previous-event', () => {
     pause();
@@ -958,12 +1024,21 @@ export function mountWorkbench(
   function onShortcut(event: KeyboardEvent) {
     if (event.defaultPrevented || !root.isConnected) return;
     if (root.closest('[hidden]')) return;
+    if (event.key === 'Escape' && overlayOpen) {
+      event.preventDefault();
+      closeOverlay(true);
+      return;
+    }
     const shortcut = workbenchShortcut(event, event.target);
     if (!shortcut) return;
     if (shortcut === 'toggle-sidebar') {
       if (embed) return;
       event.preventDefault();
-      layoutStore.set({ rail: !layoutStore.get().rail });
+      if (stackedQuery?.matches) return;
+      if (layoutStore.get().rail) {
+        if (overlayOpen) closeOverlay(true);
+        else openOverlay();
+      } else layoutStore.set({ rail: true });
       return;
     }
     // A replay embed has no live run to return to.
@@ -1016,6 +1091,52 @@ export function mountWorkbench(
       ),
     );
   }
+  let chatFresh: {
+    readonly fresh: WorkbenchFresh | null;
+    readonly settle: boolean;
+  } = { fresh: null, settle: false };
+  const visibleFeed = () => (replay.hidden ? live : replay);
+  let renderedInspection: {
+    readonly cursor: number;
+    readonly tab: string;
+    readonly mode: string;
+    readonly value: string | undefined;
+    readonly block: HTMLPreElement;
+  } | null = null;
+  let renderedReplay: {
+    readonly frame: WorkbenchFrame | null;
+    readonly lesson: string | undefined;
+  } = { frame: null, lesson: undefined };
+  function applyChatFresh() {
+    markWorkbenchFresh(replay.hidden ? replay : live, null);
+    markWorkbenchFresh(visibleFeed(), chatFresh.fresh, {
+      settle: chatFresh.settle,
+    });
+  }
+  // The framework commits after this view renders; re-mark when it does.
+  // Attributes are not observed, so the marks never retrigger the observer.
+  const chatObserver =
+    typeof MutationObserver === 'undefined'
+      ? null
+      : new MutationObserver(applyChatFresh);
+  for (const feed of [live, replay])
+    chatObserver?.observe(feed, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+  function planCard(props: {
+    readonly title?: string;
+    readonly steps?: readonly string[];
+  }) {
+    const card = element('article', '', 'wb-summary');
+    const steps = element('ol');
+    for (const step of props.steps ?? []) steps.append(element('li', step));
+    card.append(element('h2', props.title ?? 'Waiting for title'), steps);
+    return card;
+  }
+
   function render() {
     const snapshot = store.getSnapshot();
     const frame = snapshot.frame;
@@ -1098,6 +1219,7 @@ export function mountWorkbench(
       (commands.lesson?.id === 'local-models' &&
         frame?.localModel?.state !== 'ready');
     stop.disabled = historical || !busy;
+    stop.hidden = !busy;
     denyCheckbox.disabled = historical || busy;
     denyCheckbox.checked = historical
       ? visibleEvents.some(
@@ -1123,8 +1245,15 @@ export function mountWorkbench(
           : 'Recorded'
         : `${historical ? 'Replay' : 'Live'} · ${frame?.status ?? snapshot.status}`;
     if (status.textContent !== statusText) status.textContent = statusText;
-    replay.replaceChildren();
-    if (historical && !commands.managedChat) {
+    // Rebuild the replay feed only when what it shows changes, so a
+    // re-render on the same frame keeps the cards and any running fade.
+    const replayFrame = historical && !commands.managedChat ? frame : null;
+    const replayChanged =
+      replayFrame !== renderedReplay.frame ||
+      commands.lesson?.id !== renderedReplay.lesson;
+    renderedReplay = { frame: replayFrame, lesson: commands.lesson?.id };
+    if (replayChanged) replay.replaceChildren();
+    if (replayChanged && replayFrame) {
       if (commands.lesson?.format === 'decision') {
         const plan = element('article', '', 'wb-summary');
         plan.setAttribute('aria-label', 'Application plan');
@@ -1132,14 +1261,10 @@ export function mountWorkbench(
         workbenchDecisionPlan.steps.forEach((step) =>
           steps.append(element('li', step)),
         );
-        plan.append(
-          element('span', 'Application-owned plan', 'wb-muted'),
-          element('h2', workbenchDecisionPlan.title),
-          steps,
-        );
+        plan.append(element('h2', workbenchDecisionPlan.title), steps);
         replay.append(plan);
       }
-      const messages = frame?.messages ?? [];
+      const messages = replayFrame.messages;
       for (const message of messages) {
         if (message.role === 'user') {
           replay.append(element('p', message.content, 'wb-user'));
@@ -1162,16 +1287,12 @@ export function mountWorkbench(
           replay.append(element('p', message.content, 'wb-assistant'));
           continue;
         }
-        const props = message.props;
-        if (!props) continue;
-        const card = element('article', '', 'wb-summary');
-        card.append(element('h2', props.title ?? 'Waiting for title'));
-        const steps = element('ol');
-        for (const step of props.steps ?? []) steps.append(element('li', step));
-        card.append(steps);
-        replay.append(card);
+        // Resolved props: the card shows only what the component receives.
+        if (!message.props) continue;
+        replay.append(planCard(message.props));
       }
     }
+    syncTabs();
     inspectorTabs.sync(
       tabButtons.find((item) => item.textContent === tab)?.id ??
         tabButtons[0].id,
@@ -1423,6 +1544,40 @@ export function mountWorkbench(
                     ? 'Application state'
                     : 'Requests and tools');
     const selectedIndex = snapshot.cursor ?? snapshot.events.length - 1;
+    // Computed once per render. The inspector marks the raw stream; the chat
+    // marks resolved props, since that is what the card receives.
+    const streamSettle = workbenchSettleAt(snapshot.events, selectedIndex);
+    const streamFresh = streamSettle
+      ? { fresh: streamSettle, settle: true }
+      : {
+          fresh: workbenchFreshAt(snapshot.events, selectedIndex),
+          settle: false,
+        };
+    {
+      const marksChat =
+        commands.lesson?.id === 'generative-ui' ||
+        commands.lesson?.id === 'first-plan';
+      const settled = marksChat
+        ? workbenchSettleAt(
+            snapshot.events,
+            selectedIndex,
+            workbenchResolvedProps,
+          )
+        : null;
+      chatFresh = settled
+        ? { fresh: settled, settle: true }
+        : {
+            fresh: marksChat
+              ? workbenchFreshAt(
+                  snapshot.events,
+                  selectedIndex,
+                  workbenchResolvedProps,
+                )
+              : null,
+            settle: false,
+          };
+      applyChatFresh();
+    }
     const requestContext =
       frame?.kind === 'request' ||
       frame?.kind === 'tool' ||
@@ -1574,7 +1729,6 @@ export function mountWorkbench(
         format: commands.lesson?.format,
         endpoint: commands.lesson?.endpoint,
         source: snapshot.readOnly ? '' : sourceLabel,
-        flag: snapshot.events.length ? (activeMilestone?.label ?? '') : '',
       });
     const bottomHeading =
       recipeView?.detailHeading ??
@@ -1670,26 +1824,6 @@ export function mountWorkbench(
       capturedHeading.title = title;
     }
     modeControl.sync(modes, mode.id);
-    const sourcePhrase = frame
-      ? options.inspection
-        ? 'Captured protocol and runtime observations'
-        : commands.lesson?.id === 'javascript-runtime'
-          ? 'Captured native QuickJS values and application-owned state'
-          : uiView
-            ? tab === 'UI'
-              ? 'SDK component observations and application-owned state'
-              : 'Framework kit configuration and checked application policy'
-            : workflowView
-              ? 'Captured SDK observations and separately recorded application form drafts'
-              : tab === 'JSON' || tab === 'UI'
-                ? 'SDK parsed output'
-                : frame.source
-      : 'Waiting for captured data';
-    caption.textContent = frame
-      ? `${sourcePhrase} · turn ${frame.turn} · event ${selectedIndex + 1}/${snapshot.events.length}${
-          (frame.status ?? snapshot.status) === 'loading' ? ' · streaming' : ''
-        }${historical ? '' : ' · live'}`
-      : sourcePhrase;
     // The panel is off-screen on the Requests tab; skip highlighting it.
     if (!onRequests)
       if (tab === 'State' && mode.id === 'tree') {
@@ -1710,10 +1844,46 @@ export function mountWorkbench(
           .forEach((node) => node.remove());
         if (stateTree.element.parentNode !== inspection)
           inspection.prepend(stateTree.element);
-      } else
-        rebuildKeepingFocus(inspection, 'data-sequence', () => {
-          inspection.replaceChildren(pre(mode.value ?? undefined, tab));
-        });
+      } else {
+        // Keep the block when nothing it shows changed, so a re-render on
+        // the same frame does not restart the fresh mark's fade.
+        const shown = {
+          cursor: selectedIndex,
+          tab,
+          mode: mode.id,
+          value:
+            typeof mode.value === 'string'
+              ? mode.value
+              : JSON.stringify(mode.value),
+        };
+        const unchanged =
+          renderedInspection !== null &&
+          inspection.firstChild === renderedInspection.block &&
+          renderedInspection.cursor === shown.cursor &&
+          renderedInspection.tab === shown.tab &&
+          renderedInspection.mode === shown.mode &&
+          renderedInspection.value === shown.value;
+        if (unchanged)
+          while (inspection.lastChild !== renderedInspection?.block)
+            inspection.lastChild?.remove();
+        else
+          rebuildKeepingFocus(inspection, 'data-sequence', () => {
+            const block = pre(mode.value ?? undefined, tab);
+            if (
+              mode.id === 'streaming' &&
+              mode.value !== null &&
+              mode.value !== undefined &&
+              block.dataset.language === 'json'
+            )
+              block.replaceChildren(
+                renderWorkbenchFreshJson(mode.value, streamFresh.fresh, {
+                  settle: streamFresh.settle,
+                }),
+              );
+            inspection.replaceChildren(block);
+            renderedInspection = { ...shown, block };
+          });
+      }
     const failed = (frame?.status ?? snapshot.status) === 'error';
     const issueText =
       commands.lesson?.format === 'workflow' &&
@@ -1774,11 +1944,16 @@ export function mountWorkbench(
           '--wb-fill',
           `${workbenchSegmentFill({ start, end }, selectedIndex, total)}%`,
         );
-        segment.append(element('span', `Turn ${turn}`, 'wb-mono'));
         return segment;
       }),
     );
-    flag.textContent = total ? (activeMilestone?.label ?? '') : '';
+    const flagTurn = snapshot.events[selectedIndex]?.turn;
+    flag.textContent =
+      total && flagTurn !== undefined
+        ? [`Turn ${flagTurn}`, activeMilestone?.label]
+            .filter(Boolean)
+            .join(' · ')
+        : '';
     const flagPercent = workbenchTickPercent(selectedIndex, total);
     flag.style.left = total ? `${flagPercent}%` : '';
     const anchor = workbenchFlagAnchor(flagPercent);
@@ -1814,6 +1989,20 @@ export function mountWorkbench(
       if (historical) replay.scrollTop = replay.scrollHeight;
       else if (following) live.scrollTop = live.scrollHeight;
     });
+  }
+  // Open the current lesson's section for this visit without saving it. (A later
+  // persisted layout write saves the whole layout, expansion included; accepted.)
+  if (!embed && !options.fixedSidebarTopic) {
+    const currentSection = workbenchLessonGroups.find(({ lessons }) =>
+      lessons.includes(
+        (commands.lesson?.id ?? 'generative-ui') as WorkbenchLessonId,
+      ),
+    )?.id;
+    const saved = layoutStore.get();
+    if (currentSection && saved.collapsed.includes(currentSection))
+      layoutStore.set(workbenchExpandSection(saved, currentSection), {
+        persist: false,
+      });
   }
   renderLayout();
   const unsubscribeLayout = layoutStore.subscribe(renderLayout);
@@ -1864,13 +2053,18 @@ export function mountWorkbench(
       const captureIndex = captureSources.indexOf(captureSource);
       if (captureIndex >= 0) captureSources.splice(captureIndex, 1);
       exposeWorkbenchCapture();
+      chatObserver?.disconnect();
       messages?.dispose();
       detachScrub();
       requestsView.dispose();
       inspectorTabs.dispose();
+      moreMenu.dispose();
       modeControl.dispose();
       pause();
       document.removeEventListener('keydown', onShortcut);
+      document.removeEventListener('click', onOverlayClick);
+      nav.removeEventListener('focusout', onNavFocusOut);
+      stackedQuery?.removeEventListener?.('change', renderLayout);
       unsubscribe();
       unsubscribeLayout();
       split.dispose();

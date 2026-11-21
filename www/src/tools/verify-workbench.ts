@@ -1,4 +1,8 @@
-import { readApplicationState } from './verify-inspector-modes';
+import {
+  readApplicationState,
+  readInspectorJson,
+  showInspectorMode,
+} from './verify-inspector-modes';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import { verifyWorkbenchKeyboard } from './verify-workbench-keyboard';
 import { verifyLocalWorkbench } from './verify-local-workbench';
@@ -47,6 +51,7 @@ import {
   checkWorkbenchTabs,
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
+  verifyEmbedTabsRowFits,
 } from './verify-workbench-layout';
 /** Verifies the checked framework hosts with deterministic HTTP events or a real provider. */
 import { type AGUIEvent, EventType, type RunAgentInput } from '@ag-ui/core';
@@ -62,6 +67,7 @@ import {
   hostedWorkbenchLessons as workbenchLessons,
 } from '../../examples/quickstart/runtime/workbench-lessons';
 import { createWorkbenchApp } from '../../examples/quickstart/server/workbench-app';
+import { openLessons, selectInspectorTab } from './verify-inspector-tabs';
 
 const live = process.env['WORKBENCH_LIVE'] === '1';
 const recording = process.env['WORKBENCH_RECORD'] === '1';
@@ -1001,12 +1007,20 @@ try {
         const selected = page.locator(
           '.wb:visible .wb-nav [aria-pressed=true]',
         );
-        const before = await selected.innerText();
+        // The accessible name, not innerText: the icon rail hides the labels, and
+        // an empty `before` would make the wait below pass at once.
+        // New conversation and the conversation list live in the rail's overlay.
+        await openLessons(page);
+        const before = (await selected.getAttribute('aria-label')) ?? '';
         await page
           .getByRole('button', { name: 'New conversation', exact: true })
           .click();
         try {
-          await expect(selected).not.toHaveText(before);
+          // Creating closes the overlay; reopen it to read the selection.
+          await openLessons(page);
+          await expect(selected).not.toHaveAttribute('aria-label', before);
+          if ((await page.locator('.wb-nav-overlay').count()) > 0)
+            await page.keyboard.press('Escape');
         } catch (error) {
           await page.screenshot({
             path: resolve(
@@ -1058,17 +1072,13 @@ try {
         await expect(
           page.locator('.wb:visible .wb-inspector [data-captured]'),
         ).toBeVisible();
-      await expectWorkbenchDefaultLayout(page);
+      await expectWorkbenchDefaultLayout(page, { rail: true });
       await expect(
         page
           .getByRole('tablist', { name: 'Inspector views', exact: true })
           .getByRole('tab', { name: lesson.inspector, exact: true }),
       ).toHaveAttribute('aria-selected', 'true');
-      if (lesson.id === 'generative-ui')
-        await page
-          .getByRole('tablist', { name: 'Inspector views', exact: true })
-          .getByRole('tab', { name: 'JSON', exact: true })
-          .click();
+      if (lesson.id === 'generative-ui') await selectInspectorTab(page, 'JSON');
       if (process.env['WORKBENCH_RECORD'] === '1')
         await page.waitForTimeout(800);
       if (recording) await page.waitForTimeout(100);
@@ -1102,10 +1112,7 @@ try {
         await expect(
           page.locator('.wb:visible .wb-summary button:enabled'),
         ).toHaveCount(0);
-        await page
-          .getByRole('tablist', { name: 'Inspector views', exact: true })
-          .getByRole('tab', { name: 'State', exact: true })
-          .click();
+        await selectInspectorTab(page, 'State');
         await expect
           .poll(() => readApplicationState(page.locator('.wb:visible')))
           .toContain('"revision": 0');
@@ -1114,10 +1121,7 @@ try {
           .getByRole('button', { name: 'First prompt', exact: true })
           .click();
         await expect(send).toBeEnabled();
-        await page
-          .getByRole('tablist', { name: 'Inspector views', exact: true })
-          .getByRole('tab', { name: 'Requests', exact: true })
-          .click();
+        await selectInspectorTab(page, 'Requests');
         mark('recovery');
         if (process.env['WORKBENCH_RECORD'] === '1')
           await page.waitForTimeout(500);
@@ -1166,10 +1170,7 @@ try {
         process.env['WORKBENCH_RECORD'] === '1'
       )
         await page.waitForTimeout(700);
-      await page
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name: 'State', exact: true })
-        .click();
+      await selectInspectorTab(page, 'State');
       await expect
         .poll(() => readApplicationState(page.locator('.wb:visible')))
         .toContain('"revision": 0');
@@ -1182,19 +1183,16 @@ try {
         .toContain('"revision": 1');
       if (process.env['WORKBENCH_RECORD'] === '1')
         await page.waitForTimeout(900);
-      await page
-        .getByRole('tab', {
-          name:
-            lesson.id === 'schemas'
-              ? 'Schema'
-              : lesson.id === 'tools' || lesson.id === 'debugging'
-                ? 'Requests'
-                : lesson.id === 'request-transformation'
-                  ? 'Transform'
-                  : 'JSON',
-          exact: true,
-        })
-        .click();
+      await selectInspectorTab(
+        page,
+        lesson.id === 'schemas'
+          ? 'Schema'
+          : lesson.id === 'tools' || lesson.id === 'debugging'
+            ? 'Requests'
+            : lesson.id === 'request-transformation'
+              ? 'Transform'
+              : 'JSON',
+      );
       await page
         .getByRole('button', { name: 'Follow-up', exact: true })
         .click();
@@ -1211,10 +1209,7 @@ try {
       ).toBeEnabled({ timeout: 60_000 });
       if (process.env['WORKBENCH_RECORD'] === '1')
         await page.waitForTimeout(900);
-      await page
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name: 'State', exact: true })
-        .click();
+      await selectInspectorTab(page, 'State');
       const revisedSteps = await page
         .getByRole('article', { name: 'Summary card' })
         .last()
@@ -1237,16 +1232,10 @@ try {
           passed: true,
         });
         await page.setViewportSize({ width: 1600, height: 1000 });
-        await page
-          .getByRole('tablist', { name: 'Inspector views', exact: true })
-          .getByRole('tab', { name: 'State', exact: true })
-          .click();
+        await selectInspectorTab(page, 'State');
       }
       if (lesson.id === 'request-transformation') {
-        await page
-          .getByRole('tablist', { name: 'Inspector views', exact: true })
-          .getByRole('tab', { name: 'Transform', exact: true })
-          .click();
+        await selectInspectorTab(page, 'Transform');
         const observed = JSON.parse(
           await page
             .locator('.wb:visible .wb-inspector .wb-inspection pre')
@@ -1290,10 +1279,7 @@ try {
             );
           });
         }
-        await page
-          .getByRole('tablist', { name: 'Inspector views', exact: true })
-          .getByRole('tab', { name: 'State', exact: true })
-          .click();
+        await selectInspectorTab(page, 'State');
       }
       const captured = requests.slice(start);
       expect(captured.length).toBeGreaterThanOrEqual(4);
@@ -1327,10 +1313,7 @@ try {
       const httpCount = browserRequests;
       mark('replay');
       if (process.env['WORKBENCH_RECORD'] === '1')
-        await page
-          .getByRole('tablist', { name: 'Inspector views', exact: true })
-          .getByRole('tab', { name: 'JSON', exact: true })
-          .click();
+        await selectInspectorTab(page, 'JSON');
       await page.getByRole('button', { name: 'Play', exact: true }).click();
       await expect(page.locator('[data-replay]')).toBeVisible();
       await expect(send).toBeDisabled();
@@ -1345,10 +1328,7 @@ try {
       await expect(page.locator('[data-replay] .wb-summary')).toHaveCount(1);
       if (process.env['WORKBENCH_RECORD'] === '1')
         await page.waitForTimeout(600);
-      await page
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name: 'State', exact: true })
-        .click();
+      await selectInspectorTab(page, 'State');
       await page
         .getByRole('button', { name: /^Plan accepted[.]/ })
         .first()
@@ -1358,6 +1338,62 @@ try {
         .toContain('"revision": 1');
       if (process.env['WORKBENCH_RECORD'] === '1')
         await page.waitForTimeout(700);
+      if (!live && lesson.id === 'generative-ui') {
+        // The newest streamed text lights up in the UI tab's JSON; the chat
+        // card marks a field when its resolved prop changes.
+        await selectInspectorTab(page, 'UI');
+        await showInspectorMode(page.locator('.wb:visible'), 'streaming');
+        const seek = page.getByRole('slider', { name: 'Seek captured event' });
+        const streamingMark = '.wb:visible mark.wb-fresh:not(.wb-fresh-settle)';
+        const chatMark = '.wb:visible [data-wb-fresh=""]';
+        const expectStreamingMark = async () => {
+          await expect(page.locator(streamingMark)).toHaveCount(1);
+          const text = await page.locator(streamingMark).innerText();
+          expect(text.length).toBeGreaterThan(0);
+        };
+        // The marked chat element holds the resolved value at its path.
+        const expectResolvedChatMark = async () => {
+          await expect(page.locator(chatMark)).toHaveCount(1);
+          const linked = await page.locator(chatMark).evaluate((node) => ({
+            text: node.textContent ?? '',
+            path:
+              node.tagName === 'H2'
+                ? 'title'
+                : `steps.${[...(node.parentElement?.children ?? [])].indexOf(node)}`,
+          }));
+          await selectInspectorTab(page, 'JSON');
+          const props = (await readInspectorJson(
+            page.locator('.wb:visible'),
+            'resolved',
+          )) as { title?: string; steps?: string[] };
+          const value =
+            linked.path === 'title'
+              ? props.title
+              : props.steps?.[Number(linked.path.slice(6))];
+          expect(linked.text.length).toBeGreaterThan(0);
+          expect(linked.text).toBe(value);
+          await selectInspectorTab(page, 'UI');
+          await showInspectorMode(page.locator('.wb:visible'), 'streaming');
+        };
+        await seek.press('End');
+        for (let step = 0; step < 24; step += 1) {
+          await seek.press('ArrowLeft');
+          if (await page.locator(streamingMark).count()) break;
+        }
+        await expectStreamingMark();
+        for (let step = 0; step < 3; step += 1) await seek.press('ArrowLeft');
+        await expectStreamingMark();
+        await seek.press('End');
+        for (let step = 0; step < 24; step += 1) {
+          await seek.press('ArrowLeft');
+          if (await page.locator(chatMark).count()) break;
+        }
+        await expectResolvedChatMark();
+        await seek.press('End');
+        await expect(page.locator(streamingMark)).toHaveCount(0);
+        await expect(page.locator(chatMark)).toHaveCount(0);
+        await selectInspectorTab(page, 'State');
+      }
       const slider = page.getByRole('slider', { name: 'Seek captured event' });
       if (lesson.id === 'debugging') {
         await page.getByRole('button', { name: /^HTTP 403[.]/ }).press('Enter');
@@ -1367,38 +1403,26 @@ try {
         await expect(
           page.getByRole('checkbox', { name: 'Demo denial', exact: true }),
         ).toBeDisabled();
-        await page
-          .getByRole('tablist', { name: 'Inspector views', exact: true })
-          .getByRole('tab', { name: 'Requests', exact: true })
-          .click();
+        await selectInspectorTab(page, 'Requests');
         await expect(
           page.locator('.wb:visible .wb-inspector .wb-inspection'),
         ).toContainText('403');
         if (process.env['WORKBENCH_RECORD'] === '1')
           await page.waitForTimeout(700);
-        await page
-          .getByRole('tablist', { name: 'Inspector views', exact: true })
-          .getByRole('tab', { name: 'State', exact: true })
-          .click();
+        await selectInspectorTab(page, 'State');
       }
       if (lesson.id === 'request-transformation') {
         await page
           .getByRole('button', { name: /^Request transformed[.]/ })
           .first()
           .press('Enter');
-        await page
-          .getByRole('tablist', { name: 'Inspector views', exact: true })
-          .getByRole('tab', { name: 'Transform', exact: true })
-          .click();
+        await selectInspectorTab(page, 'Transform');
         await expect(
           page.locator('.wb:visible .wb-inspector .wb-inspection'),
         ).toContainText('Workspace canonical-docs');
         if (process.env['WORKBENCH_RECORD'] === '1')
           await page.waitForTimeout(700);
-        await page
-          .getByRole('tablist', { name: 'Inspector views', exact: true })
-          .getByRole('tab', { name: 'State', exact: true })
-          .click();
+        await selectInspectorTab(page, 'State');
       }
       await slider.fill('0');
       await expect
@@ -1425,6 +1449,8 @@ try {
         await expect(
           page.getByRole('article', { name: 'Summary card' }),
         ).toHaveCount(0);
+        // Conversations live in the rail's overlay; choosing one closes it.
+        await openLessons(page);
         await page
           .getByRole('button', { name: 'Two-step plan', exact: true })
           .click();
@@ -1488,10 +1514,7 @@ try {
             await expect(
               page.locator('.wb:visible .wb-chat .wb-panel-head'),
             ).toContainText('complete');
-            await page
-              .getByRole('tablist', { name: 'Inspector views', exact: true })
-              .getByRole('tab', { name: 'State', exact: true })
-              .click();
+            await selectInspectorTab(page, 'State');
             await expect
               .poll(() => readApplicationState(page.locator('.wb:visible')))
               .toContain('"revision": 0');
@@ -1517,9 +1540,25 @@ try {
       if (!live) {
         const beforeNavigation = requests.length;
         const target = lesson.id === 'tools' ? 'structured-output' : 'tools';
+        // The default layout is the icon rail: open the overlay, choose, and
+        // confirm choosing closes it again.
+        // The rail button is hidden in the stacked narrow layout, so go wide.
+        if (process.env['WORKBENCH_RECORD'] !== '1')
+          await page.setViewportSize({ width: 1440, height: 900 });
+        // Let the wide layout settle. The strip's stale button is shown by CSS
+        // before the sidebar re-renders as the rail, so wait for the rail's own
+        // accessible name rather than for any visible toggle.
+        await expect(
+          page
+            .locator('.wb:visible .wb-rail-toggle[aria-label="Expand sidebar"]')
+            .first(),
+        ).toBeVisible();
+        await openLessons(page);
+        await expect(page.locator('.wb-nav-overlay')).toBeVisible();
         await page
           .locator(`.wb:visible .wb-lessons a[href$="lesson=${target}"]`)
           .click();
+        await expect(page.locator('.wb-nav-overlay')).toHaveCount(0);
         await expect(page.locator('.wb:visible [data-send]')).toBeEnabled();
         await expect(page.locator('.wb:visible .wb-summary')).toHaveCount(0);
         expect(requests).toHaveLength(beforeNavigation);
@@ -1570,6 +1609,16 @@ try {
   if (!live && lessons.some((lesson) => lesson.id === 'tools')) {
     report.push(
       ...(await verifyEmbedWorkbench({
+        browser,
+        origin: `http://127.0.0.1:${address.port}`,
+      })),
+    );
+    saveCheckpoint();
+  }
+  // The embed's tab row (four tabs, More, mode toggle) fits the 790px frame.
+  if (!live && lessons.some((lesson) => lesson.id === 'ui-kits')) {
+    report.push(
+      ...(await verifyEmbedTabsRowFits({
         browser,
         origin: `http://127.0.0.1:${address.port}`,
       })),

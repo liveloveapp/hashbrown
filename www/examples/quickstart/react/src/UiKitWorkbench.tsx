@@ -84,7 +84,6 @@ function ProposalCard(
         props.component === 'StepsCard' ? 'Steps card' : 'Summary card'
       }
     >
-      <span className="wb-muted">{props.component} · trusted component</span>
       <h2>{props.title}</h2>
       <ol>
         {props.steps.map((step, index) => (

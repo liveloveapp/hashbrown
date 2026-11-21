@@ -1,3 +1,4 @@
+import { seedOpenWorkbenchLayout } from './workbench-open-layout';
 import { assertWorkbenchCaptureAfterReload } from '../../examples/quickstart/runtime/workbench-lessons';
 import { readInspectorJson } from './verify-inspector-modes';
 import { saveWorkbenchCapture } from './workbench-capture-file';
@@ -14,6 +15,7 @@ import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
 } from './verify-workbench-layout';
+import { selectInspectorTab } from './verify-inspector-tabs';
 
 /** Exercises public history controls against genuine SDK observations and actual provider requests. */
 export async function verifyHistoryWorkbench(options: {
@@ -39,6 +41,7 @@ export async function verifyHistoryWorkbench(options: {
       ? { recordVideo: { dir: work, size: { width: 1600, height: 1000 } } }
       : {}),
   });
+  await seedOpenWorkbenchLayout(page);
   const base = `${framework}-${lesson}-${live ? 'live' : 'fixture'}`;
   const started = Date.now();
   const phases: Record<string, number> = {};
@@ -84,10 +87,7 @@ export async function verifyHistoryWorkbench(options: {
       root.getByRole('button', { name, exact: true });
     const send = root.locator('[data-send]');
     const tab = async (name: string) => {
-      await root
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name, exact: true })
-        .click();
+      await selectInspectorTab(root, name);
     };
     const observed = async () => {
       await tab('History');

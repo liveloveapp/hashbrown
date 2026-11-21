@@ -3,8 +3,8 @@ import { expect, type Locator } from '@playwright/test';
 /**
  * Chooses a mode in the inspector panel's toggle by its explicit mode id,
  * as a reader would. The ids depend on the tab: `top`, `bottom` and `raw` for
- * most tabs; `tree`, `json` and `raw` on State; `schema`, `raw`, `parsed` and
- * `resolved` on UI; `raw`, `parsed` and `resolved` on JSON.
+ * most tabs; `tree`, `json` and `raw` on State; `streaming` and `schema` on
+ * UI; `raw`, `parsed` and `resolved` on JSON.
  *
  * @param root - The visible workbench shell.
  * @param id - The mode id to show.

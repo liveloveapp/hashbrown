@@ -178,7 +178,7 @@ test('selection offers manual choice before a request and never starts the SDK f
   await act(() => button(host, 'Show steps').click());
 
   expect(sdk.selection).not.toHaveBeenCalled();
-  expect(host.textContent).toContain('Application-owned plan');
+  expect(host.textContent).not.toContain('Application-owned plan');
   await act(() => root.unmount());
 });
 
@@ -201,9 +201,7 @@ test('Prose retains captured SDK Markdown and citation selection is inert in his
   const root = createRoot(host);
 
   await act(() =>
-    root.render(
-      <ProseWorkbenchConversation active navigation={navigation} />,
-    ),
+    root.render(<ProseWorkbenchConversation active navigation={navigation} />),
   );
   expect(chat.sendMessage).not.toHaveBeenCalled();
   await send(host);
@@ -449,9 +447,7 @@ test('Prose preserves parser completion at a partial historical frame while hidi
   const root = createRoot(host);
 
   await act(() =>
-    root.render(
-      <ProseWorkbenchConversation active navigation={navigation} />,
-    ),
+    root.render(<ProseWorkbenchConversation active navigation={navigation} />),
   );
   await send(host);
   const user = chat.sendMessage.mock.calls[0][0];
@@ -687,10 +683,7 @@ test('plain onboarding captures escaped replies and retained turns without tools
     });
     await act(() =>
       root.render(
-        <ProseWorkbenchConversation
-          active
-          navigation={{ ...navigation }}
-        />,
+        <ProseWorkbenchConversation active navigation={{ ...navigation }} />,
       ),
     );
 

@@ -36,7 +36,10 @@ export async function verifyWorkbenchKeyboard(
   await expect(tabs.last()).toBeFocused();
   await page.keyboard.press('Home');
   await expect(tabs.first()).toBeFocused();
-  await page.keyboard.press('ArrowRight');
+  // The bar is the lead view, an optional companion, then Requests and State.
+  const requestsIndex = (await tabs.allTextContents()).indexOf('Requests');
+  for (let step = 0; step < requestsIndex; step++)
+    await page.keyboard.press('ArrowRight');
   await expect(
     inspector.getByRole('tab', { name: 'Requests', exact: true }),
   ).toBeFocused();

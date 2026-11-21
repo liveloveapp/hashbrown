@@ -105,7 +105,6 @@ export class WorkbenchDecisionRun {
   template: `<div #shell></div>
     <div #live>
       <article class="wb-summary" aria-label="Application plan">
-        <span class="wb-muted">Application-owned plan</span>
         <h2>{{ plan.title }}</h2>
         <ol>
           @for (step of plan.steps; track $index) {
@@ -126,7 +125,6 @@ export class WorkbenchDecisionRun {
           <p class="wb-user">{{ message.content }}</p>
         } @else if (message.decision; as decision) {
           <article class="wb-summary" aria-label="Decision result">
-            <span class="wb-muted">Typed decision · application component</span>
             <h2>{{ decision.nextAction }}</h2>
             <p>Confidence: {{ percent(decision.confidence) }}%</p>
             <button

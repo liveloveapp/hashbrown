@@ -66,11 +66,6 @@ export function SummaryCard(props: {
     <PlanCard
       title={props.title}
       steps={props.steps}
-      label={
-        props.format === 'structured'
-          ? 'Typed plan · application component'
-          : undefined
-      }
     >
       <button
         type="button"

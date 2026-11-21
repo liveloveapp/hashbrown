@@ -46,7 +46,7 @@ The local server uses the real OpenAI adapter, keeps the model and output limit 
 
 ## Choose one teaching focus
 
-The collapsible sidebar opens twenty-eight lessons under Get started, Concepts, Production, and Recipes. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
+The sidebar starts as an icon rail; select the rail button (or press Cmd+B or Ctrl+B) to open twenty-eight lessons under Get started, Concepts, Production, and Recipes over the chat. All use the same two-step plan and keep the chat, the inspector, and the bottom player in view. Drag the handle between the chat and the inspector to resize them. Focus it and use the left and right arrow keys or Home, or double-click it to reset.
 
 The lessons are:
 
@@ -63,7 +63,7 @@ The lessons are:
 | [Decisions](/docs/angular/concept/decisions)                                        | `/angular.html?lesson=decisions`               | Complete typed choices, confidence and explicit application.               |
 | [Debugging](/docs/angular/concept/debugging)                                        | `/angular.html?lesson=debugging`               | Local HTTP denial, same-conversation recovery, and captured evidence.      |
 | [Request transformation](/docs/angular/concept/transform-request-options)           | `/angular.html?lesson=request-transformation`  | Actual server callback, added instructions, and preserved provider fields. |
-| [Prose](/docs/angular/recipes/prose)                                      | `/angular.html?lesson=prose`              | Streamed Markdown and actual source-reference selection.                   |
+| [Prose](/docs/angular/recipes/prose)                                                | `/angular.html?lesson=prose`                   | Streamed Markdown and actual source-reference selection.                   |
 | [Predictive suggestions](/docs/angular/recipes/predictive-actions)                  | `/angular.html?lesson=predictions`             | Current-context completions and explicit acceptance or dismissal.          |
 | [UI selection](/docs/angular/recipes/ui-selection)                                  | `/angular.html?lesson=ui-selection`            | Whole candidate decisions, app-owned views, and manual choice.             |
 | [Shared agent state](/docs/angular/concept/shared-agent-state)                      | `/angular.html?lesson=shared-state`            | Explicit local state replacement, agent drafts, commit, and rollback.      |
@@ -107,15 +107,15 @@ The bottom player records user prompts, requests, decoded stream events, tool re
 
 The chat, JSON, components, and application state all follow the same cursor. Playback uses immutable snapshots. It does not contact the provider, call a tool, or accept a plan. While you replay, the **LIVE** pill becomes **Return to live**. Choose it to continue the actual conversation.
 
-The inspector has JSON, Requests, UI, and State tabs. A strip under the tabs names the selected event, its turn, time, and source. Every tab except Requests puts what was captured on one side and what the SDK or the app made of it on the other. They sit side by side when there is room and stack when there is not. The `{ }` toggle on the captured side shows the raw frame.
+The inspector opens on the view the lesson teaches. Its tab bar shows that view, sometimes one view that goes with it, then Requests and State; the rest are under **More**. Where a view can show the moment more than one way, a toggle at the end of the tab bar switches between them. Most views switch between what was captured, what the SDK or the app made of it, and **Raw**, the frame as captured. In a generative UI lesson, the UI tab shows **Streaming**, the JSON parsed so far, or **Schema**, and the JSON tab shows **Raw**, **Parsed**, and **Resolved**. While a component streams, the newest text is highlighted in the Streaming view and in the part of the card it fills.
 
 Use Tab to reach the active inspector tab. Left and right arrows switch views; Home and End go to the first and last view. Press Tab again to leave the tab strip and reach the panel controls or its readable content. The request-detail tabs use the same keys. Switching a view doesn't send a request or apply a plan.
 
 Focus the bottom scrubber to use its native arrow, Home, and End keys. Its accessible value names the turn, event, milestone, and elapsed time. Status announcements follow lifecycle changes, such as loading or completion, rather than announcing every token.
 
-The Requests tab opens with an overview timeline you can drag or click to seek, above a table of requests grouped by turn. Each row shows status, start, duration, events, and a waterfall, and tool calls sit under the request that called them. Select a request to open Overview, Messages, Tools, State, Raw request (as captured), and Response (every streamed event). Tool rows show Call, Result, and Raw. A failed HTTP request shows Overview and Raw. Press Escape or select **Close request detail** to go back to the table.
+The Requests tab is a table of requests grouped by turn. It follows the player's playhead, so use the bottom scrubber to move through the run. Each row shows status, start, duration, events, and a waterfall, and tool calls sit under the request that called them. Select a request to open Overview, Messages, Tools, State, Raw request (as captured), and Response (every streamed event). Tool rows show Call, Result, and Raw. A failed HTTP request shows Overview and Raw. Press Escape or select **Close request detail** to go back to the table.
 
-**New conversation** at the top of the sidebar starts an independent session; select a session under Conversations to return to it. The sidebar toggle (Cmd+B or Ctrl+B) collapses it to an icon rail. Sessions are kept in memory and clear on refresh.
+**New conversation** at the top of the lesson list starts an independent session; select a session under Conversations to return to it. Select **Keep open** to pin the list beside the chat. Sessions are kept in memory and clear on refresh.
 
 ## Read the code
 

@@ -200,7 +200,6 @@ export class WorkflowWorkbenchSession {
         class="wb-summary wb-workflow-state"
         aria-label="Shared SDK state"
       >
-        <span class="wb-muted">Application-owned plan · local form draft</span>
         <ol>
           @for (step of plan.steps; track step) {
             <li>{{ step }}</li>

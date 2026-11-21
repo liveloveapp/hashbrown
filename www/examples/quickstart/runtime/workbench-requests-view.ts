@@ -8,7 +8,6 @@ import {
 } from './workbench-requests';
 import { workbenchActiveAxis } from './workbench-requests-axis';
 import { exchangeAtPlayhead } from './workbench-requests-follow';
-import { createWorkbenchRequestsTimeline } from './workbench-requests-timeline';
 
 /** What the Requests view renders on each store change. */
 export interface WorkbenchRequestsViewInput {
@@ -21,11 +20,9 @@ export interface WorkbenchRequestsViewInput {
   readonly endpoint?: string;
   /** The provenance label, such as "Live model". */
   readonly source: string;
-  /** The main timeline's flag text, so the overview strip reads the same. */
-  readonly flag: string;
 }
 
-/** The inspector's Requests tab: overview timeline, picker, table and detail pane. */
+/** The inspector's Requests tab: picker, table and detail pane. */
 export interface WorkbenchRequestsView {
   /** The `.wb-inspection` container that wraps everything. */
   readonly element: HTMLElement;
@@ -332,15 +329,15 @@ function heading(value: string): HTMLHeadingElement {
 }
 
 /**
- * Creates the Requests view: an overview timeline over the whole run, a table
- * of request and tool exchanges grouped by turn, and a detail pane with tabs
- * that apply to the selected row. The detail follows the playhead, showing the
- * exchange under it, until the reader picks a row; the next cursor move that
- * the view did not make resumes following. A narrow inspector hides the strip
- * and the table and offers the rows from a header picker instead. Selection,
- * the open detail tab and the selected response event live in this closure,
- * so they survive the shell's re-renders. While live, an HTTP error is
- * selected automatically unless the user has already picked a row.
+ * Creates the Requests view: a table of request and tool exchanges grouped by
+ * turn, and a detail pane with tabs that apply to the selected row. The
+ * detail follows the playhead, showing the exchange under it, until the
+ * reader picks a row; the next cursor move that the view did not make resumes
+ * following. A narrow inspector hides the table and offers the rows from a
+ * header picker instead. Selection, the open detail tab and the selected
+ * response event live in this closure, so they survive the shell's
+ * re-renders. While live, an HTTP error is selected automatically unless the
+ * user has already picked a row.
  *
  * @param options - The instance id and the seek callback.
  * @returns The view element, `update` for each store change and `dispose`.
@@ -385,7 +382,6 @@ export function createWorkbenchRequestsView(
     // The store renders synchronously, so the update has already seen it.
     ownSeek = undefined;
   }
-  const timeline = createWorkbenchRequestsTimeline({ seek });
   const empty = element(
     'p',
     'Send a message to follow its requests.',
@@ -432,7 +428,7 @@ export function createWorkbenchRequestsView(
   const detailTabs = createWorkbenchTabs(tablist, panel);
   detail.append(detailHead, panel);
   body.append(tableWrap);
-  root.append(timeline.element, empty, pickbar, body);
+  root.append(empty, pickbar, body);
 
   const find = (id: string | null) =>
     exchanges.find((exchange) => exchange.id === id);
@@ -1126,17 +1122,6 @@ export function createWorkbenchRequestsView(
     const at = cursor ?? events.length - 1;
     const atEvent = events[at];
     const current = atEvent ? exchangeAtPlayhead(exchanges, events, at) : null;
-    timeline.update({
-      events,
-      cursor,
-      busy: input.busy,
-      axis,
-      exchanges,
-      flag: input.flag,
-      valueText: atEvent
-        ? `Event ${at + 1} of ${events.length}, turn ${atEvent.turn}: ${current ? `${current.name} · ` : ''}${eventBadge(atEvent)}`
-        : 'No captured events',
-    });
     empty.hidden = exchanges.length > 0;
     body.hidden = exchanges.length === 0;
     root.toggleAttribute('data-open', detailShown());
@@ -1212,7 +1197,6 @@ export function createWorkbenchRequestsView(
     dispose: () => {
       root.removeEventListener('keydown', onKeydown);
       root.ownerDocument.removeEventListener('pointerdown', onPointerDown);
-      timeline.dispose();
       detailTabs.dispose();
     },
   };

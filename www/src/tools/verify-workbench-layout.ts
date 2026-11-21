@@ -1,26 +1,35 @@
-import { expect, type Frame, type Page } from '@playwright/test';
+import { type Browser, expect, type Frame, type Page } from '@playwright/test';
+import { selectInspectorTab } from './verify-inspector-tabs';
 
 /**
- * Asserts the shell opens at its recording defaults: expanded sidebar, every
- * section open, a 44/56 split, and one inspector panel (or, on the Requests tab, the
- * overview slider above the table).
+ * Asserts the shell opens at its recording defaults: expanded sidebar (or, with
+ * `rail`, the icon rail), every
+ * section open, a 44/56 split, and one inspector panel (or, on the Requests tab,
+ * the table, with the player as the only slider).
  */
-export async function expectWorkbenchDefaultLayout(page: Page): Promise<void> {
+export async function expectWorkbenchDefaultLayout(
+  page: Page,
+  options: { readonly rail?: boolean } = {},
+): Promise<void> {
   const root = page.locator('.wb:visible');
-  await expect(root).not.toHaveClass(/\bwb-rail\b/);
+  // With `rail`, the shell is a reader's first visit: the icon rail, not the open sidebar.
+  if (options.rail) await expect(root).toHaveClass(/\bwb-rail\b/);
+  else await expect(root).not.toHaveClass(/\bwb-rail\b/);
   await expect(root.locator('.wb-split')).toHaveAttribute(
     'aria-valuenow',
     '44',
   );
-  await expect(
-    root.locator('.wb-nav-heading[aria-expanded=false]'),
-  ).toHaveCount(0);
+  if (!options.rail)
+    await expect(
+      root.locator('.wb-nav-heading[aria-expanded=false]'),
+    ).toHaveCount(0);
   const requests = root.locator('.wb-inspector .wb-requests');
   if ((await requests.count()) > 0) {
-    // The Requests tab shows an overview and a table; there is no inspector panel.
+    // The Requests tab is a table; the player's slider is the only scrubber.
     await expect(
-      requests.getByRole('slider', { name: 'Seek request timeline' }),
+      root.getByRole('slider', { name: 'Seek captured event' }),
     ).toBeVisible();
+    await expect(requests.getByRole('slider')).toHaveCount(0);
     // Before the first request the table has no rows, so it has no size.
     await expect(requests.locator('table.wb-requests-table')).toBeAttached();
     return;
@@ -94,7 +103,7 @@ export interface WorkbenchAlignmentReport {
  * `getBoundingClientRect` and computed styles, with a 0.5px tolerance:
  *
  * - the chat head and the inspector tab row are the same height and level;
- * - each panel's head, body and caption share the panel's inner left edge;
+ * - each panel's head and body share the panel's inner left edge;
  * - the section title and mode toggle share a centre line;
  * - the playback buttons share a centre line, and the timeline is inset
  *   equally on both sides (and, in one row, centred on the buttons);
@@ -157,6 +166,13 @@ export async function measureWorkbenchAlignment(
       };
     const innerLeft = (panel: Element) =>
       rect(panel).left + px(panel, 'border-left-width');
+    // Panel regions inset by --wb-pad: 16px in the app, 12px in the embed.
+    const pad =
+      parseFloat(
+        getComputedStyle(chat.closest('.wb') ?? chat).getPropertyValue(
+          '--wb-pad',
+        ),
+      ) || 16;
     const contentLeft = (element: Element) =>
       rect(element).left +
       px(element, 'border-left-width') +
@@ -164,8 +180,16 @@ export async function measureWorkbenchAlignment(
 
     // 1. Chat head and inspector tab row: same height, level bottoms.
     const head = chat.querySelector('.wb-panel-head');
-    const tabs = inspector.querySelector('.wb-tabs');
-    if (visible(head) && visible(tabs)) {
+    const tabs = inspector.querySelector('.wb-tabs-row');
+    // A row whose mode toggle wrapped under the tabs is taller than the head;
+    // the single-row alignments below then do not apply.
+    const wrapped =
+      visible(tabs) &&
+      visible(tabs.querySelector('[role="tab"]')) &&
+      visible(tabs.querySelector('.wb-segmented')) &&
+      rect(tabs.querySelector('.wb-segmented') as Element).top >=
+        rect(tabs.querySelector('[role="tab"]') as Element).bottom - 1;
+    if (visible(head) && visible(tabs) && !wrapped) {
       expectNear('head heights (chat, tabs)', [
         rect(head).height,
         rect(tabs).height,
@@ -174,10 +198,11 @@ export async function measureWorkbenchAlignment(
         rect(head).bottom,
         rect(tabs).bottom,
       ]);
-    } else failures.push('missing chat head or inspector tabs');
+    } else if (!visible(head) || !visible(tabs))
+      failures.push('missing chat head or inspector tabs');
 
     // 2. One inner left edge per panel.
-    const chatEdge = innerLeft(chat) + 16;
+    const chatEdge = innerLeft(chat) + pad;
     const chatEdges = [chatEdge];
     if (visible(head)) chatEdges.push(contentLeft(head));
     // The live and replay feeds share the slot; one is visible.
@@ -185,26 +210,22 @@ export async function measureWorkbenchAlignment(
     if (feed) chatEdges.push(contentLeft(feed));
     const composer = chat.querySelector('.wb-composer');
     if (visible(composer)) chatEdges.push(contentLeft(composer));
-    expectNear('chat left edges (panel+16, head, feed, composer)', chatEdges);
-    const inspectorEdge = innerLeft(inspector) + 16;
+    expectNear('chat left edges (panel+pad, head, feed, composer)', chatEdges);
+    const inspectorEdge = innerLeft(inspector) + pad;
     const inspectorEdges = [inspectorEdge];
     const firstTab = tabs?.querySelector('[role="tab"]');
     if (visible(firstTab)) inspectorEdges.push(contentLeft(firstTab));
-    const sectionHead = inspector.querySelector('.wb-section-head');
-    if (visible(sectionHead)) inspectorEdges.push(contentLeft(sectionHead));
     const inspection = inspector.querySelector(
       '.wb-inspection:not(.wb-requests)',
     );
     if (visible(inspection)) inspectorEdges.push(contentLeft(inspection));
-    const caption = inspector.querySelector('.wb-caption');
-    if (visible(caption)) inspectorEdges.push(contentLeft(caption));
     expectNear(
-      'inspector left edges (panel+16, tab text, section head, body, caption)',
+      'inspector left edges (panel+pad, tab text, body)',
       inspectorEdges,
     );
 
     // The inspector body (code block or tree) fills the inspection box down
-    // to its bottom padding, with no empty band above the caption.
+    // to its bottom padding, with no empty band below it.
     if (visible(inspection)) {
       const body = [...inspection.children].filter(visible).at(-1);
       if (body) {
@@ -219,19 +240,16 @@ export async function measureWorkbenchAlignment(
       }
     }
 
-    // 3. Section title and mode toggle share a centre line; caption on the grid.
-    const title = sectionHead?.querySelector('h3');
-    const toggle = sectionHead?.querySelector('.wb-segmented');
-    if (visible(title) && visible(toggle))
-      expectNear('section head centres (title, toggle)', [
-        rect(title).top + rect(title).height / 2,
+    // 3. The mode toggle and the selected tab share a centre line.
+    const toggle = tabs?.querySelector('.wb-segmented');
+    const selectedTab = tabs?.querySelector(
+      '[role="tab"][aria-selected="true"]',
+    );
+    if (visible(toggle) && visible(selectedTab) && !wrapped)
+      expectNear('tab row centres (selected tab, toggle)', [
+        rect(selectedTab).top + rect(selectedTab).height / 2,
         rect(toggle).top + rect(toggle).height / 2,
       ]);
-    if (visible(caption)) {
-      measurements['caption height'] = round(rect(caption).height);
-      if (!onGrid(rect(caption).height))
-        failures.push(`caption height ${round(rect(caption).height)}`);
-    }
 
     // 4. Playback: one button centre line; the timeline inset equally.
     const player = playback.querySelector('.wb-player');
@@ -268,33 +286,6 @@ export async function measureWorkbenchAlignment(
             centres[0],
           ]);
       }
-
-      // 5. Turn labels start at their tick's line.
-      const ticks = [...scrubber.querySelectorAll('.wb-events button')]
-        .filter((tick) => rect(tick).width > 0)
-        .map((tick) => {
-          const box = rect(tick);
-          return box.left + px(tick, 'left', '::before');
-        });
-      const labels = [
-        ...scrubber.querySelectorAll('.wb-segment > span'),
-      ].filter(visible);
-      const offsets = labels.map((label) => {
-        const left = rect(label).left;
-        const nearest = ticks.reduce(
-          (best, tick) =>
-            Math.abs(tick - left) < Math.abs(best - left) ? tick : best,
-          Infinity,
-        );
-        return left - nearest;
-      });
-      measurements['turn label offsets from tick line'] = offsets.map(round);
-      offsets.forEach((offset, index) => {
-        if (!near(offset, 0))
-          failures.push(
-            `turn label ${index + 1} is ${round(offset)}px off its tick`,
-          );
-      });
     }
 
     // 6. Requests: shared left edge, aligned fact columns, grid table rows.
@@ -326,10 +317,10 @@ export async function measureWorkbenchAlignment(
       }
       const facts = requests.querySelector('.wb-requests-facts');
       if (visible(facts)) edges.push(rect(facts).left);
-      if (visible(detail)) edges.unshift(innerLeft(detail) + 16);
+      if (visible(detail)) edges.unshift(innerLeft(detail) + pad);
       if (edges.length > 1)
         expectNear(
-          'requests left edges (detail+16, picker, tabs, facts)',
+          'requests left edges (detail+pad, picker, tabs, facts)',
           edges,
         );
       if (visible(facts)) {
@@ -451,7 +442,7 @@ export async function measureWorkbenchAlignment(
       // paddings and rows are on the grid, not their viewport-driven height.
       if (
         element.matches(
-          'button, select, input:not([type="range"]), [role="tab"], [role="treeitem"], tr, .wb-panel-head, .wb-tabs, .wb-section-head, .wb-caption, .wb-segmented, .wb-requests-tabs, .wb-requests-detail-head, .wb-requests-pickbar, .wb-requests-overview, .wb-playback, .wb-scrubber',
+          'button, select, input:not([type="range"]), [role="tab"], [role="treeitem"], tr, .wb-panel-head, .wb-tabs-row, .wb-segmented, .wb-requests-tabs, .wb-requests-detail-head, .wb-requests-pickbar, .wb-playback, .wb-scrubber',
         ) &&
         !onGrid(rect(element).height)
       )
@@ -480,12 +471,13 @@ export async function checkWorkbenchTabs(
 ): Promise<WorkbenchAlignmentReport[]> {
   const reports: WorkbenchAlignmentReport[] = [];
   for (const tab of WORKBENCH_ALIGNMENT_TABS) {
-    const button = target
-      .locator('.wb:visible')
-      .getByRole('tablist', { name: 'Inspector views', exact: true })
-      .getByRole('tab', { name: tab, exact: true });
-    await button.click();
-    await expect(button).toHaveAttribute('aria-selected', 'true');
+    const root = target.locator('.wb:visible');
+    await selectInspectorTab(root, tab);
+    await expect(
+      root
+        .getByRole('tablist', { name: 'Inspector views', exact: true })
+        .getByRole('tab', { name: tab, exact: true }),
+    ).toHaveAttribute('aria-selected', 'true');
     if (tab === 'Requests')
       await expect(
         target.locator('.wb:visible .wb-requests-facts'),
@@ -499,4 +491,62 @@ export async function checkWorkbenchTabs(
     reports.push(report);
   }
   return reports;
+}
+
+/**
+ * Opens the lessons with four bar tabs, a More menu and the mode toggle at the
+ * 790px docs embed frame, and asserts the inspector's tab row neither scrolls
+ * sideways nor pushes the page wider than the frame.
+ *
+ * @param options - The browser and the verifier server origin.
+ * @returns One result per lesson.
+ */
+export async function verifyEmbedTabsRowFits(options: {
+  readonly browser: Browser;
+  /** The verifier server, e.g. `http://127.0.0.1:1234`. */
+  readonly origin: string;
+}) {
+  const results = [];
+  for (const lesson of ['ui-kits', 'server-threads']) {
+    const context = await options.browser.newContext({
+      viewport: { width: 790, height: 720 },
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto(
+        `${options.origin}/react.html?lesson=${lesson}&embed=replay`,
+      );
+      const row = page.locator('.wb:visible .wb-tabs-row');
+      await expect(row).toBeVisible();
+      await expect(
+        row.getByRole('button', { name: 'More', exact: true }),
+      ).toBeVisible();
+      await expect(row.getByRole('tab')).toHaveCount(4);
+      // Neither the row nor the tablist may hide a tab behind a scroll.
+      const [rowScroll, rowClient, tabsScroll, tabsClient] = await row.evaluate(
+        (node) => {
+          const tablist = node.querySelector('.wb-tabs') as HTMLElement;
+          return [
+            node.scrollWidth,
+            node.clientWidth,
+            tablist.scrollWidth,
+            tablist.clientWidth,
+          ];
+        },
+      );
+      expect(
+        rowScroll,
+        `${lesson} tab row scrolls sideways`,
+      ).toBeLessThanOrEqual(rowClient);
+      expect(
+        tabsScroll,
+        `${lesson} tablist scrolls sideways`,
+      ).toBeLessThanOrEqual(tabsClient);
+      await expectNoHorizontalOverflow(page);
+      results.push({ lesson, frame: 790, tabsRowFits: true });
+    } finally {
+      await context.close();
+    }
+  }
+  return results;
 }

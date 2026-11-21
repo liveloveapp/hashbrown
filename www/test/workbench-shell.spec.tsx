@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { expect, test, vi } from 'vitest';
 import { createWorkbenchStore } from '../examples/quickstart/runtime/workbench';
-import { createWorkbenchLayoutStore } from '../examples/quickstart/runtime/workbench-layout';
+import {
+  createWorkbenchLayoutStore,
+  workbenchLayoutKey,
+} from '../examples/quickstart/runtime/workbench-layout';
 import { mountWorkbench } from '../examples/quickstart/runtime/workbench-view';
 import {
   chooseInspectorMode,
+  clickInspectorTab,
   inspectorPanelText,
+  inspectorTabNames,
 } from './workbench-inspector-helpers';
 
 function fakeStorage() {
@@ -17,7 +24,16 @@ function fakeStorage() {
   };
 }
 
-function mountShell(layout = createWorkbenchLayoutStore(fakeStorage())) {
+/** A layout store seeded with the open sidebar (not the rail default). */
+function openLayoutStore(storage = fakeStorage()) {
+  storage.map.set(
+    workbenchLayoutKey,
+    JSON.stringify({ rail: false, collapsed: [], split: 44 }),
+  );
+  return createWorkbenchLayoutStore(storage);
+}
+
+function mountShell(layout = openLayoutStore()) {
   const host = document.createElement('div');
   document.body.append(host);
   const store = createWorkbenchStore();
@@ -41,7 +57,7 @@ function mountShell(layout = createWorkbenchLayoutStore(fakeStorage())) {
   return { host, store, shell, layout };
 }
 
-test('renders New conversation first and five expanded sections by default', () => {
+test('renders New conversation first and five expanded sections when the sidebar is open', () => {
   const { host, shell } = mountShell();
 
   const firstButton = host.querySelector('.wb-nav button');
@@ -93,7 +109,7 @@ test('folds a section and persists it', () => {
 });
 
 test('collapses to an icon rail that keeps accessible names', () => {
-  const { host, shell } = mountShell(createWorkbenchLayoutStore(fakeStorage()));
+  const { host, shell } = mountShell(openLayoutStore());
   host
     .querySelector<HTMLButtonElement>('[data-section=recipes] .wb-nav-heading')
     ?.click();
@@ -101,10 +117,7 @@ test('collapses to an icon rail that keeps accessible names', () => {
   host.querySelector<HTMLButtonElement>('.wb-rail-toggle')?.click();
 
   const toggle = host.querySelector('.wb-rail-toggle');
-  const named = [
-    ...host.querySelectorAll('.wb-lessons a'),
-    host.querySelector('.wb-cta'),
-  ];
+  const named = [...host.querySelectorAll('.wb-lessons a')];
   expect(host.querySelector('.wb')?.classList.contains('wb-rail')).toBe(true);
   expect(toggle?.getAttribute('aria-label')).toBe('Expand sidebar');
   expect(toggle?.getAttribute('aria-expanded')).toBe('false');
@@ -115,7 +128,7 @@ test('collapses to an icon rail that keeps accessible names', () => {
 });
 
 test('shares rail state across retained instances', () => {
-  const layout = createWorkbenchLayoutStore(fakeStorage());
+  const layout = openLayoutStore();
   const first = mountShell(layout);
   const second = mountShell(layout);
 
@@ -129,7 +142,7 @@ test('shares rail state across retained instances', () => {
 });
 
 test('stops following the layout store after dispose', () => {
-  const layout = createWorkbenchLayoutStore(fakeStorage());
+  const layout = openLayoutStore();
   const { host, shell } = mountShell(layout);
   const root = host.querySelector('.wb');
   shell.dispose();
@@ -319,7 +332,7 @@ test('drags the split relative to chat and inspector', () => {
 test('persists the split once when a drag ends', () => {
   const storage = fakeStorage();
   const setItem = vi.spyOn(storage, 'setItem');
-  const { host, shell } = mountShell(createWorkbenchLayoutStore(storage));
+  const { host, shell } = mountShell(openLayoutStore(storage));
   const separator = host.querySelector<HTMLElement>('[role=separator]');
   const rect = (left: number, right: number) =>
     ({ left, right, width: right - left }) as DOMRect;
@@ -342,9 +355,9 @@ test('persists the split once when a drag ends', () => {
 
   expect(writesWhileDragging).toBe(0);
   expect(setItem).toHaveBeenCalledTimes(1);
-  expect(
-    JSON.parse(storage.map.get('hashbrown.workbench.layout') as string).split,
-  ).toBe(60);
+  expect(JSON.parse(storage.map.get(workbenchLayoutKey) as string).split).toBe(
+    60,
+  );
   shell.dispose();
 });
 
@@ -594,13 +607,12 @@ test('positions ticks and the flag on the scrubber', () => {
   expect(empty).toBe('No captured events');
   expect(ticks.every((tick) => tick.style.left.endsWith('%'))).toBe(true);
   expect(flag?.getAttribute('aria-hidden')).toBe('true');
-  expect(flag?.textContent).toBe(pressed?.textContent);
   expect(flag?.style.left).toBe('60%');
   expect(flag?.hasAttribute('data-anchor')).toBe(false);
   expect(
     segments.map((segment) => segment.style.getPropertyValue('--wb-fill')),
   ).toEqual(['100%', '0%']);
-  expect(segments[1]?.textContent).toContain('Turn 2');
+  expect(flag?.textContent).toBe(`Turn 2 · ${pressed?.textContent}`);
   shell.dispose();
 });
 
@@ -634,6 +646,34 @@ test('marks only the tick under the playhead so its mark yields to the thumb', (
   expect(gap).toBeGreaterThan(-1);
   expect(onTick).toEqual([String(tickIndexes[0])]);
   expect(betweenTicks).toEqual([]);
+  shell.dispose();
+});
+
+test('the playhead flag names the turn and shows only on hover or focus', () => {
+  const { host, store, shell } = mountShell();
+  const secondTurnStart = recordTwoTurns(store);
+
+  store.seek(secondTurnStart + 1);
+
+  const flag = host.querySelector('.wb-scrubber .wb-flag');
+  const slider = host.querySelector('.wb-scrubber input[type=range]');
+  const segments = host.querySelectorAll(
+    '.wb-segment[title], .wb-segment > span',
+  );
+  const css = readFileSync(
+    resolve(
+      import.meta.dirname,
+      '../examples/quickstart/runtime/workbench.css',
+    ),
+    'utf8',
+  );
+
+  expect(flag?.textContent).toMatch(/^Turn 2 · /);
+  expect(slider?.getAttribute('aria-valuetext')).toMatch(/^Turn 2 · /);
+  expect(segments).toHaveLength(0);
+  expect(flag?.classList.contains('wb-on-hover')).toBe(true);
+  expect(css).toMatch(/\.wb-scrubber:hover \.wb-flag\.wb-on-hover/);
+  expect(css).toMatch(/\.wb-scrubber:focus-within \.wb-flag\.wb-on-hover/);
   shell.dispose();
 });
 
@@ -750,7 +790,7 @@ test('rebuilds the sidebar only when rail or sections change', () => {
 });
 
 test('drives playback from shortcuts only on the visible instance', () => {
-  const layout = createWorkbenchLayoutStore(fakeStorage());
+  const layout = openLayoutStore();
   const first = mountShell(layout);
   const second = mountShell(layout);
   second.host.hidden = true;
@@ -835,7 +875,8 @@ test('toggles the rail with Cmd+B and Ctrl+B', () => {
   press(document.body, 'B', { ctrlKey: true });
 
   expect(afterCmd).toBe(true);
-  expect(layout.get().rail).toBe(false);
+  expect(layout.get().rail).toBe(true);
+  expect(document.querySelector('.wb-nav-overlay')).not.toBeNull();
   shell.dispose();
 });
 
@@ -954,9 +995,7 @@ test('history inspector pairs actual SDK and retained app text and Raw keeps the
     isLoading: false,
   });
 
-  const tabs = [...host.querySelectorAll('[role=tab]')].map(
-    (node) => node.textContent,
-  );
+  const tabs = inspectorTabNames(host);
 
   store.recordHistory({ messages: [], isLoading: false, isSending: true });
   expect(
@@ -1017,10 +1056,7 @@ test('history Text and UI views describe the actual selected text without genera
     ],
     isLoading: false,
   });
-  const tab = (name: string) =>
-    [...host.querySelectorAll<HTMLButtonElement>('[role=tab]')]
-      .find((item) => item.textContent === name)
-      ?.click();
+  const tab = (name: string) => clickInspectorTab(host, name);
 
   tab('Text');
 
@@ -1206,4 +1242,191 @@ test('preserves focused controls and handled keys while body shortcuts still pla
 
   expect(store.getSnapshot().cursor).toBe(1);
   shell.dispose();
+});
+
+function railLayoutStore(saved?: Record<string, unknown>) {
+  const storage = fakeStorage();
+  if (saved) storage.map.set(workbenchLayoutKey, JSON.stringify(saved));
+  return { storage, layout: createWorkbenchLayoutStore(storage) };
+}
+
+function railButton(host: HTMLElement) {
+  return host.querySelector<HTMLButtonElement>('.wb-rail-toggle');
+}
+
+test('the rail button opens the lesson overlay and Escape closes it', () => {
+  const { layout } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+
+  railButton(host)?.click();
+  const opened = host.querySelector('.wb-nav-overlay');
+  const expandedOpen = railButton(host)?.getAttribute('aria-expanded');
+  document.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+  );
+
+  expect(opened?.querySelector('.wb-cta')).not.toBeNull();
+  expect(opened?.querySelectorAll('.wb-lessons a').length).toBeGreaterThan(0);
+  expect(expandedOpen).toBe('true');
+  expect(host.querySelector('.wb-nav-overlay')).toBeNull();
+  expect(railButton(host)?.getAttribute('aria-expanded')).toBe('false');
+  expect(document.activeElement).toBe(railButton(host));
+  expect(layout.get().rail).toBe(true);
+  shell.dispose();
+});
+
+test('clicking outside the overlay closes it', () => {
+  const { layout } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+  railButton(host)?.click();
+
+  host.querySelector<HTMLElement>('.wb-chat')?.click();
+
+  expect(host.querySelector('.wb-nav-overlay')).toBeNull();
+  shell.dispose();
+});
+
+test('choosing a lesson closes the overlay', () => {
+  const { layout } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+  railButton(host)?.click();
+  const link = host.querySelector<HTMLAnchorElement>(
+    '.wb-nav-overlay .wb-lessons a',
+  );
+  link?.addEventListener('click', (event) => event.preventDefault());
+
+  link?.click();
+
+  expect(host.querySelector('.wb-nav-overlay')).toBeNull();
+  expect(document.activeElement).toBe(railButton(host));
+  shell.dispose();
+});
+
+test('Keep open pins the sidebar and saves rail false', () => {
+  const { layout, storage } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+  railButton(host)?.click();
+
+  host
+    .querySelector<HTMLButtonElement>('.wb-nav-overlay [data-nav-key="pin"]')
+    ?.click();
+
+  expect(host.querySelector('.wb-nav-overlay')).toBeNull();
+  expect(host.querySelector('.wb')?.classList.contains('wb-rail')).toBe(false);
+  expect(JSON.parse(storage.map.get(workbenchLayoutKey) ?? '{}').rail).toBe(
+    false,
+  );
+  shell.dispose();
+});
+
+test('the overlay is never saved', () => {
+  const { layout, storage } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+
+  railButton(host)?.click();
+
+  expect(storage.map.get(workbenchLayoutKey) ?? '').not.toContain('overlay');
+  shell.dispose();
+});
+
+test("the current lesson's section opens even when saved collapsed", () => {
+  const { layout, storage } = railLayoutStore({
+    rail: false,
+    collapsed: ['start', 'concepts', 'production', 'recipes'],
+    split: 44,
+  });
+  const { host, shell } = mountShell(layout);
+
+  const group = host.querySelector('[data-section=concepts] [data-collapsed]');
+  const stillCollapsed = host.querySelector(
+    '[data-section=production] [data-collapsed]',
+  );
+
+  expect(group).toBeNull();
+  expect(stillCollapsed).not.toBeNull();
+  expect(
+    JSON.parse(storage.map.get(workbenchLayoutKey) ?? '{}').collapsed,
+  ).toContain('concepts');
+  shell.dispose();
+});
+
+test('the toggle-sidebar shortcut opens the overlay in rail mode', () => {
+  const { layout } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+
+  document.dispatchEvent(
+    new KeyboardEvent('keydown', {
+      key: 'b',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+
+  expect(host.querySelector('.wb-nav-overlay')).not.toBeNull();
+  expect(layout.get().rail).toBe(true);
+  shell.dispose();
+});
+
+test('the rail holds no New conversation or conversation list until the overlay opens', () => {
+  const { layout } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+
+  const before = [
+    host.querySelector('.wb-nav .wb-cta'),
+    host.querySelector('.wb-nav .wb-conversations'),
+    host.querySelectorAll('.wb-nav .wb-lessons a').length,
+  ];
+  railButton(host)?.click();
+
+  expect(before.slice(0, 2)).toEqual([null, null]);
+  expect(before[2]).toBeGreaterThan(0);
+  expect(host.querySelector('.wb-nav-overlay .wb-cta')).not.toBeNull();
+  expect(
+    host.querySelector('.wb-nav-overlay .wb-conversations'),
+  ).not.toBeNull();
+  expect(host.querySelector('.wb-nav-overlay')?.getAttribute('role')).toBe(
+    'group',
+  );
+  shell.dispose();
+});
+
+test('tabbing out of the overlay closes it without stealing focus', () => {
+  const { layout } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+  railButton(host)?.click();
+  const outside = host.querySelector<HTMLElement>('textarea');
+  const inside = host.querySelector<HTMLElement>('.wb-nav-overlay a');
+
+  inside?.dispatchEvent(
+    new FocusEvent('focusout', { bubbles: true, relatedTarget: outside }),
+  );
+
+  expect(host.querySelector('.wb-nav-overlay')).toBeNull();
+  expect(document.activeElement).not.toBe(railButton(host));
+  shell.dispose();
+});
+
+test('the sidebar re-renders as the rail when the viewport widens past the stacked layout', () => {
+  const listeners = new Set<() => void>();
+  const query = {
+    matches: true,
+    addEventListener: (_: string, listener: () => void) =>
+      void listeners.add(listener),
+    removeEventListener: (_: string, listener: () => void) =>
+      void listeners.delete(listener),
+  };
+  vi.stubGlobal('matchMedia', () => query);
+  const { layout } = railLayoutStore();
+  const { host, shell } = mountShell(layout);
+  const stackedLabel = railButton(host)?.getAttribute('aria-label');
+
+  query.matches = false;
+  listeners.forEach((listener) => listener());
+
+  expect(stackedLabel).toBe('Collapse sidebar');
+  expect(railButton(host)?.getAttribute('aria-label')).toBe('Expand sidebar');
+  expect(host.querySelector('.wb-nav .wb-cta')).toBeNull();
+  shell.dispose();
+  vi.unstubAllGlobals();
 });

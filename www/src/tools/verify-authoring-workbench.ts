@@ -1,3 +1,4 @@
+import { seedOpenWorkbenchLayout } from './workbench-open-layout';
 import { readFirstSection, readInspectorJson } from './verify-inspector-modes';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import type { RunAgentInput } from '@ag-ui/core';
@@ -10,6 +11,7 @@ import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
 } from './verify-workbench-layout';
+import { selectInspectorTab } from './verify-inspector-tabs';
 
 /** Controlled negative cases are confined to the labelled provider fixture. */
 export type AuthoringFixtureOutcome =
@@ -48,6 +50,7 @@ export async function verifyAuthoringWorkbench(options: {
       ? { recordVideo: { dir: work, size: { width: 1600, height: 1000 } } }
       : {}),
   });
+  await seedOpenWorkbenchLayout(page);
   const base = `${framework}-${lesson}-${live ? 'live' : 'fixture'}`;
   const started = Date.now(),
     phases: Record<string, number> = {};
@@ -77,10 +80,7 @@ export async function verifyAuthoringWorkbench(options: {
       root.getByRole('button', { name, exact: true });
     const send = root.locator('[data-send]');
     const tab = async (name: string) => {
-      await root
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name, exact: true })
-        .click();
+      await selectInspectorTab(root, name);
     };
     const inspection = async () => readFirstSection(root);
     const detail = async () => readInspectorJson(root, 'bottom');

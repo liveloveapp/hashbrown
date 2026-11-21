@@ -39,7 +39,6 @@ import { createRecipeWorkbenchSession } from './recipe-workbench-session';
   selector: 'app-workbench-plan-summary',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<article class="wb-summary" aria-label="Plan summary">
-    <span class="wb-muted">Application-owned plan · summary</span>
     <h2>{{ title() }}</h2>
     <p>{{ steps().join(' → ') }}</p>
   </article>`,
@@ -53,7 +52,6 @@ export class PlanSummary {
   selector: 'app-workbench-plan-steps',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<article class="wb-summary" aria-label="Plan steps">
-    <span class="wb-muted">Application-owned plan · ordered steps</span>
     <h2>{{ title() }}</h2>
     <ol>
       @for (step of steps(); track $index) {

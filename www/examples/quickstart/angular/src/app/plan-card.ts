@@ -5,7 +5,6 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   selector: 'app-plan-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<article class="wb-summary" aria-label="Summary card">
-    <span class="wb-muted">SummaryCard · trusted component</span>
     <h2>{{ title() || 'Building your plan…' }}</h2>
     <ol>
       @for (step of steps(); track $index) {

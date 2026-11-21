@@ -27,7 +27,9 @@ body {
   --wb-tick: #8a8a93;
   --wb-ink: #0d0d0d;
   --wb-cobalt: #002fa7;
+  /* Reserved for the fresh highlight; nothing else uses it. */
   --wb-cobalt-soft: #e8edfb;
+  --wb-selected: #e8e8eb;
   --wb-code: #fafafa;
   /* Syntax tokens; each keeps at least 7:1 contrast on --wb-code. */
   --wb-tok-key: #002fa7;
@@ -55,15 +57,21 @@ body {
   --wb-space-12: 48px;
   --wb-space-16: 64px;
   /* The frame padding, also the gap between panels and the playback bar. */
-  --wb-gutter: var(--wb-space-3);
+  --wb-gap: var(--wb-space-4);
+  /* Inner padding of every panel region (head rows, feed, composer, inspection, player). */
+  --wb-pad: var(--wb-space-4);
+  /* Vertical space between blocks inside a panel. */
+  --wb-stack: var(--wb-space-4);
+  /* Spacing inside a control group (tab and segmented buttons). */
+  --wb-tight: var(--wb-space-2);
   /* Every panel's head row (chat title, inspector tabs, request detail tabs). */
   --wb-head: var(--wb-space-12);
-  padding: var(--wb-gutter);
+  padding: var(--wb-gap);
   height: 100dvh;
   min-height: 600px;
   display: flex;
   flex-direction: column;
-  gap: var(--wb-gutter);
+  gap: var(--wb-gap);
   line-height: 20px;
   color: var(--wb-ink);
   background: var(--wb-canvas);
@@ -152,7 +160,7 @@ body {
   font-weight: 600;
   letter-spacing: -0.04em;
 }
-.wb-header > :last-child {
+.wb-header > :nth-child(2) {
   margin-left: auto;
 }
 .wb-header,
@@ -168,16 +176,20 @@ body {
   display: grid;
   grid-template-columns:
     minmax(0, var(--wb-nav, 216px)) minmax(280px, var(--wb-chat, 44fr))
-    var(--wb-gutter) minmax(320px, var(--wb-inspector, 56fr));
+    var(--wb-gap) minmax(320px, var(--wb-inspector, 56fr));
   transition: grid-template-columns 200ms ease;
 }
 .wb-embed .wb-layout {
   grid-template-columns:
-    minmax(280px, var(--wb-chat, 44fr)) var(--wb-gutter)
+    minmax(280px, var(--wb-chat, 44fr)) var(--wb-gap)
     minmax(320px, var(--wb-inspector, 56fr));
 }
-/* Embedded: fill the docs frame, however short, instead of the page minimum. */
+/* Embedded: fill the docs frame, however short, instead of the page minimum.
+   The rhythm steps down from 16px to 12px to fit the ~790px frame. */
 .wb.wb-embed {
+  --wb-gap: var(--wb-space-3);
+  --wb-pad: var(--wb-space-3);
+  --wb-stack: var(--wb-space-3);
   min-height: 0;
 }
 .wb-layout:has(.wb-dragging) {
@@ -185,7 +197,7 @@ body {
 }
 .wb-rail {
   /* A 32px icon column plus the gutter. */
-  --wb-nav: calc(var(--wb-space-8) + var(--wb-gutter));
+  --wb-nav: calc(var(--wb-space-8) + var(--wb-gap));
 }
 
 /* Sidebar */
@@ -195,7 +207,7 @@ body {
   flex-direction: column;
   gap: var(--wb-space-1);
   min-width: 0;
-  margin-right: var(--wb-gutter);
+  margin-right: var(--wb-gap);
   overflow-x: hidden;
   overflow-y: auto;
   font-size: 13px;
@@ -326,12 +338,12 @@ body {
 }
 .wb .wb-conversations > [aria-pressed='true'],
 .wb-lessons > [aria-current='page'] {
-  background: var(--wb-cobalt-soft);
+  background: var(--wb-hover);
   color: var(--wb-cobalt);
 }
 .wb .wb-conversations > [aria-pressed='true']:hover:enabled,
 .wb-lessons > [aria-current='page']:hover {
-  background: var(--wb-cobalt-soft);
+  background: var(--wb-hover);
 }
 .wb-conversations .wb-icon,
 .wb-lessons .wb-icon {
@@ -352,37 +364,68 @@ body {
   opacity: 0;
 }
 
+/* The lesson overlay: the full sidebar floats over the chat from the rail. */
+.wb-nav {
+  position: relative;
+}
+.wb-overlay-open .wb-nav {
+  overflow: visible;
+}
+.wb-nav-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-1);
+  width: 216px;
+  max-width: calc(100vw - var(--wb-space-8));
+  padding: var(--wb-pad);
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid var(--wb-line);
+  border-radius: 10px;
+  background: var(--wb-panel);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+/* The rail button lives under the overlay's own controls while it is open. */
+.wb-overlay-open .wb-nav > .wb-nav-top {
+  visibility: hidden;
+}
+
 /* Icon rail (wide layouts only; under 800px the sidebar is a strip). */
 @media (min-width: 801px) {
-  .wb-rail .wb-nav-top {
+  .wb-rail:not(.wb-overlay-open) .wb-nav-top {
     flex-direction: column-reverse;
   }
-  .wb-rail .wb-label {
+  .wb-rail:not(.wb-overlay-open) .wb-label {
     display: none;
   }
-  .wb.wb-rail .wb-cta {
+  .wb.wb-rail:not(.wb-overlay-open) .wb-cta {
     flex: none;
     width: var(--wb-space-8);
     padding: 0;
   }
-  .wb-rail .wb-nav-group h2 {
+  .wb-rail:not(.wb-overlay-open) .wb-nav-group h2 {
     height: 1px;
     margin: var(--wb-space-2) var(--wb-space-1) calc(var(--wb-space-2) - 1px);
     background: var(--wb-line);
   }
-  .wb-rail .wb-nav-heading {
+  .wb-rail:not(.wb-overlay-open) .wb-nav-heading {
     visibility: hidden;
     height: 0;
     padding: 0;
     margin: 0;
     overflow: hidden;
   }
-  .wb-rail .wb-nav-group [data-collapsed] {
+  .wb-rail:not(.wb-overlay-open) .wb-nav-group [data-collapsed] {
     gap: var(--wb-space-1);
   }
-  .wb.wb-rail .wb-conversations > button,
-  .wb.wb-rail .wb-lessons > a,
-  .wb.wb-rail .wb-nav-group [data-collapsed] > * {
+  .wb.wb-rail:not(.wb-overlay-open) .wb-conversations > button,
+  .wb.wb-rail:not(.wb-overlay-open) .wb-lessons > a,
+  .wb.wb-rail:not(.wb-overlay-open) .wb-nav-group [data-collapsed] > * {
     justify-content: center;
     width: var(--wb-space-8);
     height: var(--wb-space-8);
@@ -390,7 +433,9 @@ body {
     opacity: 1;
   }
   /* Tooltip from the accessible name. Fixed so the scrolling nav does not clip it. */
-  .wb-rail .wb-nav [aria-label]:is(:hover, :focus-visible)::after {
+  .wb-rail:not(.wb-overlay-open)
+    .wb-nav
+    [aria-label]:is(:hover, :focus-visible)::after {
     content: attr(aria-label);
     position: fixed;
     left: var(--wb-space-16);
@@ -421,9 +466,9 @@ body {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--wb-space-2);
+  gap: var(--wb-tight);
   min-height: var(--wb-head);
-  padding: var(--wb-space-2) var(--wb-space-4);
+  padding: var(--wb-tight) var(--wb-pad);
   box-shadow: inset 0 -1px 0 var(--wb-line);
 }
 .wb .wb-panel-head h1,
@@ -440,7 +485,7 @@ body {
 }
 .wb-feed {
   flex: 1;
-  padding: var(--wb-space-4);
+  padding: var(--wb-pad);
   line-height: 24px;
   overflow: auto;
   min-height: 0;
@@ -448,7 +493,7 @@ body {
 .wb-user {
   width: fit-content;
   max-width: 92%;
-  margin: 0 0 var(--wb-space-5) auto !important;
+  margin: 0 0 var(--wb-stack) auto !important;
   border-radius: 14px 14px 4px 14px;
   background: var(--wb-ink);
   color: #fff;
@@ -458,7 +503,7 @@ body {
   border: 1px solid var(--wb-line);
   border-radius: 12px;
   padding: calc(var(--wb-space-4) - 1px);
-  margin: var(--wb-space-3) 0 var(--wb-space-6);
+  margin: var(--wb-stack) 0;
 }
 .wb-summary h2 {
   font-size: 20px;
@@ -487,7 +532,7 @@ body {
   border-color: var(--wb-ink-hover);
 }
 .wb-composer {
-  padding: var(--wb-space-3) var(--wb-space-4);
+  padding: var(--wb-pad);
   box-shadow: inset 0 1px 0 var(--wb-line);
 }
 .wb-composer label {
@@ -515,6 +560,16 @@ body {
 .wb-actions > [data-send] {
   margin-left: auto;
 }
+.wb .wb-quiet {
+  min-height: calc(var(--wb-space-6) + var(--wb-space-1));
+  padding: 0 var(--wb-space-2);
+  border: 0;
+  background: transparent;
+  color: var(--wb-muted);
+}
+.wb .wb-quiet:hover:enabled {
+  color: var(--wb-ink);
+}
 
 /* Chat/inspector handle */
 .wb-split {
@@ -539,7 +594,7 @@ body {
   position: relative;
   z-index: 1;
   /* As wide as the gutter column; the 10×22 glyph fills the box inside the border. */
-  width: var(--wb-gutter);
+  width: var(--wb-gap);
   height: var(--wb-space-10);
   padding: var(--wb-space-2) 0;
   border: 1px solid var(--wb-line);
@@ -571,7 +626,7 @@ body {
   outline: none;
 }
 .wb-split:focus-visible .wb-grip {
-  box-shadow: 0 0 0 2px var(--wb-cobalt-soft);
+  box-shadow: 0 0 0 2px var(--wb-faint);
 }
 
 /* Inspector */
@@ -581,16 +636,90 @@ body {
   min-height: 0;
   container-type: inline-size;
 }
-.wb-tabs {
+.wb-tabs-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0;
   min-height: var(--wb-head);
-  padding: 0 var(--wb-space-2);
+  padding: 0 calc(var(--wb-pad) - var(--wb-tight));
   box-shadow: inset 0 -1px 0 var(--wb-line);
+}
+/* The mode toggle sits at the right end of the row; when tabs, More and the
+   toggle do not fit one line it wraps onto its own line under the tabs. */
+.wb-tabs-row > .wb-segmented {
+  margin: var(--wb-tight) 0 var(--wb-tight) auto;
+}
+/* Safety net: a lone row of tabs wider than the inspector scrolls sideways. */
+.wb-tabs {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+  gap: 0;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+/* More: the views that do not fit the bar, in a menu under the tabs. */
+.wb-more {
+  position: relative;
+  flex: none;
+  margin-right: var(--wb-space-1);
+}
+.wb .wb-more-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wb-space-1);
+  min-height: var(--wb-head);
+  padding: 0 var(--wb-space-1);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--wb-muted);
+  font-size: 13px;
+}
+.wb .wb-more-button:hover:enabled,
+.wb .wb-more-button[aria-expanded='true'] {
+  color: var(--wb-ink);
+}
+.wb .wb-more-button svg {
+  width: var(--wb-space-3);
+  height: var(--wb-space-3);
+}
+.wb-more-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-width: calc(var(--wb-space-16) * 2);
+  padding: var(--wb-space-1);
+  border: 1px solid var(--wb-line);
+  border-radius: var(--wb-space-2);
+  background: var(--wb-panel);
+  box-shadow: 0 var(--wb-space-2) var(--wb-space-6) rgb(0 0 0 / 12%);
+}
+.wb-more-menu[hidden] {
+  display: none;
+}
+.wb .wb-more-menu button {
+  min-height: var(--wb-space-8);
+  padding: 0 var(--wb-space-3);
+  border: 0;
+  border-radius: var(--wb-space-1);
+  background: none;
+  color: var(--wb-ink);
+  font-size: 13px;
+  text-align: left;
+}
+.wb .wb-more-menu button:hover,
+.wb .wb-more-menu button:focus-visible {
+  background: var(--wb-hover);
 }
 /* The 2px underline is the tab's bottom border; a matching top border keeps the label centred. */
 .wb .wb-tabs button {
+  flex: none;
   min-height: var(--wb-head);
   padding: 0 var(--wb-space-2);
   border: 0;
@@ -621,21 +750,6 @@ body {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-}
-.wb-section-head {
-  display: flex;
-  align-items: center;
-  gap: var(--wb-space-1) var(--wb-space-2);
-  padding: var(--wb-space-3) var(--wb-space-4) var(--wb-space-2);
-}
-/* The title stays on one line and truncates first, so the mode toggle keeps its natural width. */
-.wb .wb-section-head h3 {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
 }
 /* 1px border + 3px + 24px buttons: a 32px control. Buttons abut (their own
    8px padding spaces the labels), so it fits a 390px phone with every mode. */
@@ -669,20 +783,13 @@ body {
   color: var(--wb-ink);
   font-weight: 600;
 }
-.wb-caption {
-  margin: 0;
-  padding: var(--wb-space-2) var(--wb-space-4);
-  box-shadow: inset 0 1px 0 var(--wb-line);
-  color: var(--wb-muted);
-  font-size: 12px;
-}
 .wb-inspection {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--wb-space-3);
-  padding: 0 var(--wb-space-4) var(--wb-space-3);
+  gap: var(--wb-stack);
+  padding: var(--wb-pad);
   overflow: auto;
 }
 .wb pre {
@@ -810,7 +917,7 @@ body {
   flex-direction: column;
 }
 
-/* Requests view: overview timeline, turn-grouped table and detail beside it. */
+/* Requests view: turn-grouped table and detail beside it. */
 .wb .wb-requests.wb-inspection {
   gap: 0;
   padding: 0;
@@ -818,129 +925,10 @@ body {
   container: wb-requests / inline-size;
 }
 .wb .wb-requests > [role='alert'] {
-  margin: 0 var(--wb-space-4) var(--wb-space-3);
+  margin: 0 var(--wb-pad) var(--wb-space-3);
 }
 .wb-requests-empty {
-  padding: var(--wb-space-4);
-}
-.wb-requests-overview {
-  flex: none;
-  /* Flag row above the strip, time axis labels below it: 64px in all. */
-  padding: var(--wb-space-5) var(--wb-space-4) var(--wb-space-4);
-  box-shadow: inset 0 -1px 0 var(--wb-line);
-}
-.wb-requests-track {
-  position: relative;
-  height: 28px;
-  border-radius: 6px;
-  background: var(--wb-code);
-  box-shadow: inset 0 0 0 1px var(--wb-track);
-  cursor: pointer;
-  /* The scrub controller owns pointer input; stop the browser panning under a drag. */
-  touch-action: none;
-}
-.wb-requests-track[data-disabled] {
-  cursor: default;
-}
-.wb-requests-played {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  border-radius: 6px 0 0 6px;
-  background: rgb(0 47 167 / 6%);
-  pointer-events: none;
-}
-.wb-requests-bands,
-.wb-requests-bars {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.wb-requests-band {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  border-left: 1px dashed var(--wb-faint);
-}
-/* Axis labels sit below each band's start, clipped to the band's width. */
-.wb-requests-band > span {
-  position: absolute;
-  top: calc(100% + var(--wb-space-1));
-  left: 0;
-  right: 0;
-  overflow: hidden;
-  color: var(--wb-muted);
-  font: 10px/12px var(--wb-mono-font);
-  text-overflow: clip;
-  white-space: nowrap;
-}
-/* Three 4px lanes, 4px apart, centred in the 28px strip. */
-.wb-requests-bar {
-  position: absolute;
-  top: var(--wb-space-1);
-  min-width: var(--wb-space-1);
-  height: var(--wb-space-1);
-  border-radius: 2px;
-  background: var(--wb-cobalt);
-}
-.wb-requests-bar[data-lane='stream'] {
-  top: var(--wb-space-3);
-  background: #a5b4e8;
-}
-.wb-requests-bar[data-lane='tool'] {
-  top: var(--wb-space-5);
-  background: var(--wb-tok-number);
-}
-.wb-requests-bar[data-lane='error'] {
-  background: var(--wb-live);
-}
-.wb-requests-playhead {
-  position: absolute;
-  top: -2px;
-  bottom: -2px;
-  width: 2px;
-  margin-left: -1px;
-  background: var(--wb-ink);
-  pointer-events: none;
-}
-.wb-requests-playhead::before {
-  content: '';
-  position: absolute;
-  /* Centred on the strip so it clears the flag above and the axis below, and on the 2px line (border-box: the 3px ring is inside the 16px). */
-  top: calc(50% - var(--wb-space-2));
-  left: calc(1px - var(--wb-space-2));
-  box-sizing: border-box;
-  width: var(--wb-space-4);
-  height: var(--wb-space-4);
-  border: 3px solid var(--wb-cobalt);
-  border-radius: 999px;
-  background: #fff;
-}
-.wb-requests-flag {
-  position: absolute;
-  top: calc(-1 * var(--wb-space-5));
-  max-width: 200px;
-  padding: 2px var(--wb-space-2);
-  overflow: hidden;
-  border-radius: 6px;
-  background: var(--wb-ink);
-  color: #fff;
-  font-size: 11px;
-  line-height: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-.wb-requests-flag[data-anchor='start'] {
-  transform: none;
-}
-.wb-requests-flag[data-anchor='end'] {
-  transform: translateX(-100%);
-}
-.wb-requests-flag:empty {
-  display: none;
+  padding: var(--wb-pad);
 }
 .wb-requests-pickbar {
   display: none;
@@ -983,10 +971,10 @@ body {
   white-space: nowrap;
 }
 .wb-requests-table :is(th, td):first-child {
-  padding-left: var(--wb-space-4);
+  padding-left: var(--wb-pad);
 }
 .wb-requests-table :is(th, td):last-child {
-  padding-right: var(--wb-space-4);
+  padding-right: var(--wb-pad);
 }
 .wb-requests-table thead th:is(:nth-child(4), :nth-child(5), :nth-child(6)) {
   text-align: right;
@@ -999,7 +987,7 @@ body {
   vertical-align: middle;
 }
 .wb-requests-group th {
-  padding: var(--wb-space-2) var(--wb-space-4) var(--wb-space-1);
+  padding: var(--wb-space-2) var(--wb-pad) var(--wb-space-1);
   background: var(--wb-code);
   color: var(--wb-muted);
   font-size: 11px;
@@ -1027,7 +1015,7 @@ body {
   padding-left: var(--wb-space-8);
 }
 .wb-requests-table tr[aria-selected='true'] td {
-  background: var(--wb-cobalt-soft);
+  background: var(--wb-selected);
 }
 .wb .wb-requests-table tr[aria-selected='true'] button {
   color: var(--wb-cobalt);
@@ -1083,7 +1071,7 @@ body {
   white-space: nowrap;
 }
 .wb-badge[data-kind='request'] {
-  background: var(--wb-cobalt-soft);
+  background: var(--wb-track);
   color: var(--wb-cobalt);
 }
 .wb-badge[data-kind='tool'] {
@@ -1130,7 +1118,7 @@ body {
   align-items: center;
   gap: var(--wb-space-1);
   min-height: var(--wb-head);
-  padding: 0 var(--wb-space-2) 0 var(--wb-space-4);
+  padding: 0 var(--wb-space-2) 0 var(--wb-pad);
   box-shadow: inset 0 -1px 0 var(--wb-line);
 }
 /* One segmented row that scrolls sideways rather than wrapping. */
@@ -1229,7 +1217,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--wb-space-3);
-  padding: var(--wb-space-3) var(--wb-space-4);
+  padding: var(--wb-space-3) var(--wb-pad);
   overflow: auto;
 }
 .wb .wb-requests-panel pre {
@@ -1322,7 +1310,8 @@ body {
   background: var(--wb-hover);
 }
 .wb .wb-requests-events button[aria-pressed='true'] {
-  background: var(--wb-cobalt-soft);
+  background: var(--wb-selected);
+  color: var(--wb-cobalt);
 }
 .wb .wb-requests-events button:focus-visible {
   outline-offset: -2px;
@@ -1359,16 +1348,12 @@ body {
   text-decoration: underline;
 }
 /*
- * A narrow inspector drops the overview strip (the main timeline scrubs) and
- * shows the detail alone; the header picker opens the table as a list over it.
+ * A narrow inspector shows the detail alone; the header picker opens the table as a list over it.
  */
 @container wb-requests (max-width: 559px) {
-  .wb-requests-overview {
-    display: none;
-  }
   .wb-requests-pickbar:not([hidden]) {
     display: flex;
-    padding: var(--wb-space-2) var(--wb-space-4);
+    padding: var(--wb-space-2) var(--wb-pad);
     box-shadow: inset 0 -1px 0 var(--wb-line);
   }
   .wb-requests-table
@@ -1406,12 +1391,12 @@ body {
   background: var(--wb-panel);
   border: 1px solid var(--wb-line);
   border-radius: 14px;
-  padding: calc(var(--wb-space-2) - 1px) calc(var(--wb-space-4) - 1px);
+  padding: calc(var(--wb-tight) - 1px) calc(var(--wb-pad) - 1px);
 }
 .wb-player {
   display: flex;
   align-items: center;
-  gap: var(--wb-space-3);
+  gap: var(--wb-stack);
   overflow-x: clip;
 }
 .wb-transport {
@@ -1441,7 +1426,7 @@ body {
 }
 .wb .wb-player > button[aria-pressed='true'] {
   border-color: var(--wb-cobalt);
-  background: var(--wb-cobalt-soft);
+  background: var(--wb-hover);
   color: var(--wb-cobalt);
 }
 .wb .wb-transport .wb-play {
@@ -1519,23 +1504,7 @@ body {
   border-radius: inherit;
   background: var(--wb-cobalt);
 }
-/* The label's top is 40px in the scrubber; -1px puts it on its tick's 2px line. */
-.wb-segment > span {
-  position: absolute;
-  top: calc(var(--wb-space-10) - var(--wb-track-top));
-  left: -1px;
-  color: var(--wb-muted);
-  white-space: nowrap;
-}
-/* Each turn segment is a size container, so a turn too short for its label hides it instead of colliding with the next. */
-.wb-segment {
-  container-type: inline-size;
-}
-@container (max-width: 47px) {
-  .wb-segment > span {
-    visibility: hidden;
-  }
-}
+/* Turn segments carry no text; the playhead flag names the turn on hover or focus. */
 /* The native range is the playhead: a transparent track with a cobalt thumb, centred on 0–100%. */
 .wb-scrubber input[type='range'] {
   position: absolute;
@@ -1669,6 +1638,14 @@ body {
 .wb-flag:empty {
   display: none;
 }
+/* The milestone flag only appears while the reader is on the scrubber. */
+.wb-flag.wb-on-hover {
+  opacity: 0;
+}
+.wb-scrubber:hover .wb-flag.wb-on-hover,
+.wb-scrubber:focus-within .wb-flag.wb-on-hover {
+  opacity: 1;
+}
 .wb-time {
   flex: none;
   color: var(--wb-muted);
@@ -1733,7 +1710,7 @@ app-workflow-workbench-conversation[hidden] {
   display: none !important;
 }
 .wb-debug-controls {
-  padding: var(--wb-space-2) var(--wb-space-4);
+  padding: var(--wb-space-2) var(--wb-pad);
   box-shadow: inset 0 -1px 0 var(--wb-line);
   background: var(--wb-code);
 }
@@ -1787,11 +1764,20 @@ app-workflow-workbench-conversation[hidden] {
   }
   .wb-layout {
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--wb-gutter);
+    gap: var(--wb-gap);
   }
   .wb-split,
   .wb .wb-rail-toggle {
     display: none;
+  }
+  /* The stacked strip is already open: the overlay is just the strip. */
+  .wb-nav-overlay {
+    position: static;
+    width: auto;
+    max-width: none;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
   }
   .wb-nav {
     margin-right: 0;
@@ -1890,14 +1876,10 @@ app-workflow-workbench-conversation[hidden] {
   .wb-segment::after {
     background: Highlight;
   }
-  .wb-requests-bar,
-  .wb-requests-fall > span,
-  .wb-requests-playhead {
+  .wb-requests-fall > span {
     background: CanvasText;
   }
-  .wb-requests-bar[data-lane='error'],
-  .wb-requests-fall > [data-lane='error'],
-  .wb-requests-played {
+  .wb-requests-fall > [data-lane='error'] {
     background: Highlight;
   }
   .wb-requests-table tr[data-current] td:first-child {
@@ -2097,7 +2079,7 @@ app-workflow-workbench-conversation[hidden] {
   align-self: flex-end;
 }
 .wb-runtime-bar {
-  padding: var(--wb-space-2) var(--wb-space-4);
+  padding: var(--wb-space-2) var(--wb-pad);
 }
 .wb-runtime-bar .wb-actions {
   margin: 0;
@@ -2126,4 +2108,52 @@ app-workflow-workbench-conversation[hidden] {
 .wb-chat .wb-panel-head:has(.wb-local-controls) {
   flex-wrap: wrap;
   gap: var(--wb-space-2);
+}
+
+mark.wb-fresh {
+  background: var(--wb-cobalt-soft);
+  color: inherit;
+  border-radius: 1px;
+  box-shadow: 0 0 0 2px var(--wb-cobalt-soft);
+}
+
+mark.wb-fresh-settle {
+  animation: wb-fresh-settle 400ms forwards;
+}
+
+@keyframes wb-fresh-settle {
+  from {
+    background: var(--wb-cobalt-soft);
+    box-shadow: 0 0 0 2px var(--wb-cobalt-soft);
+  }
+  to {
+    background: transparent;
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  mark.wb-fresh-settle {
+    animation: none;
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+[data-wb-fresh] {
+  background: var(--wb-cobalt-soft);
+  border-radius: 1px;
+  box-shadow: 0 0 0 2px var(--wb-cobalt-soft);
+}
+
+[data-wb-fresh='settle'] {
+  animation: wb-fresh-settle 400ms forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-wb-fresh='settle'] {
+    animation: none;
+    background: transparent;
+    box-shadow: none;
+  }
 }

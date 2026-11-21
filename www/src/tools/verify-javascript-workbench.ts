@@ -1,3 +1,4 @@
+import { seedOpenWorkbenchLayout } from './workbench-open-layout';
 import { saveWorkbenchCapture } from './workbench-capture-file';
 import { type Browser, expect } from '@playwright/test';
 import { resolve } from 'node:path';
@@ -6,6 +7,7 @@ import {
   expectNoHorizontalOverflow,
   expectWorkbenchDefaultLayout,
 } from './verify-workbench-layout';
+import { selectInspectorTab } from './verify-inspector-tabs';
 
 /** Holds the genuine lazy WASM module so explicit cancellation can precede initialization. */
 async function verifyPendingRuntime(options: {
@@ -15,6 +17,7 @@ async function verifyPendingRuntime(options: {
 }) {
   for (const action of ['stop', 'navigate']) {
     const page = await options.browser.newPage();
+    await seedOpenWorkbenchLayout(page);
     let release!: () => void;
     const held = new Promise<void>((resolve) => {
       release = resolve;
@@ -93,6 +96,7 @@ export async function verifyJavaScriptWorkbench(options: {
       ? { recordVideo: { dir: work, size: { width: 1600, height: 1000 } } }
       : {}),
   });
+  await seedOpenWorkbenchLayout(page);
   await page.addInitScript(() => {
     const state = window as unknown as { __workbenchWasmStarts: number };
     state.__workbenchWasmStarts = 0;
@@ -131,10 +135,7 @@ export async function verifyJavaScriptWorkbench(options: {
     const output = root.locator('[data-runtime-output]');
     const editor = root.locator('[data-runtime-code]');
     const tab = async (name: string) => {
-      await root
-        .getByRole('tablist', { name: 'Inspector views', exact: true })
-        .getByRole('tab', { name, exact: true })
-        .click();
+      await selectInspectorTab(root, name);
     };
     const status = root.locator('.wb-chat .wb-panel-head');
     await tab('State');
