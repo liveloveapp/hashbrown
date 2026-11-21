@@ -63,7 +63,7 @@ The lessons are:
 | [Decisions](/docs/react/concept/decisions)                                        | `/react.html?lesson=decisions`               | Complete typed choices, confidence and explicit application.               |
 | [Debugging](/docs/react/concept/debugging)                                        | `/react.html?lesson=debugging`               | Local HTTP denial, same-conversation recovery, and captured evidence.      |
 | [Request transformation](/docs/react/concept/transform-request-options)           | `/react.html?lesson=request-transformation`  | Actual server callback, added instructions, and preserved provider fields. |
-| [Prose](/docs/react/recipes/prose)                                      | `/react.html?lesson=prose`              | Streamed Markdown and actual source-reference selection.                   |
+| [Prose](/docs/react/recipes/prose)                                                | `/react.html?lesson=prose`                   | Streamed Markdown and actual source-reference selection.                   |
 | [Predictive suggestions](/docs/react/recipes/predictive-actions)                  | `/react.html?lesson=predictions`             | Current-context completions and explicit acceptance or dismissal.          |
 | [UI selection](/docs/react/recipes/ui-selection)                                  | `/react.html?lesson=ui-selection`            | Whole candidate decisions, app-owned views, and manual choice.             |
 | [Shared agent state](/docs/react/concept/shared-agent-state)                      | `/react.html?lesson=shared-state`            | Explicit local state replacement, agent drafts, commit, and rollback.      |
@@ -107,7 +107,7 @@ The bottom player records user prompts, requests, decoded stream events, tool re
 
 The chat, JSON, components, and application state all follow the same cursor. Playback uses immutable snapshots. It does not contact the provider, call a tool, or accept a plan. While you replay, the **LIVE** pill becomes **Return to live**. Choose it to continue the actual conversation.
 
-The inspector has JSON, Requests, UI, and State tabs. A strip under the tabs names the selected event, its turn, time, and source. Every tab except Requests puts what was captured on one side and what the SDK or the app made of it on the other. They sit side by side when there is room and stack when there is not. The `{ }` toggle on the captured side shows the raw frame.
+The inspector opens on the view the lesson teaches. Its tab bar shows that view, sometimes one view that goes with it, then Requests and State; the rest are under **More**. Where a view can show the moment more than one way, a toggle at the end of the tab bar switches between them. Most views switch between what was captured, what the SDK or the app made of it, and **Raw**, the frame as captured. In a generative UI lesson, the UI tab shows **Streaming**, the JSON parsed so far, or **Schema**, and the JSON tab shows **Raw**, **Parsed**, and **Resolved**. While a component streams, the newest text is highlighted in the Streaming view and in the part of the card it fills.
 
 Use Tab to reach the active inspector tab. Left and right arrows switch views; Home and End go to the first and last view. Press Tab again to leave the tab strip and reach the panel controls or its readable content. The request-detail tabs use the same keys. Switching a view doesn't send a request or apply a plan.
 

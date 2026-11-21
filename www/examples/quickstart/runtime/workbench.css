@@ -27,7 +27,9 @@ body {
   --wb-tick: #8a8a93;
   --wb-ink: #0d0d0d;
   --wb-cobalt: #002fa7;
+  /* Reserved for the fresh highlight; nothing else uses it. */
   --wb-cobalt-soft: #e8edfb;
+  --wb-selected: #e8e8eb;
   --wb-code: #fafafa;
   /* Syntax tokens; each keeps at least 7:1 contrast on --wb-code. */
   --wb-tok-key: #002fa7;
@@ -624,7 +626,7 @@ body {
   outline: none;
 }
 .wb-split:focus-visible .wb-grip {
-  box-shadow: 0 0 0 2px var(--wb-cobalt-soft);
+  box-shadow: 0 0 0 2px var(--wb-faint);
 }
 
 /* Inspector */
@@ -713,7 +715,7 @@ body {
 }
 .wb .wb-more-menu button:hover,
 .wb .wb-more-menu button:focus-visible {
-  background: var(--wb-cobalt-soft);
+  background: var(--wb-hover);
 }
 /* The 2px underline is the tab's bottom border; a matching top border keeps the label centred. */
 .wb .wb-tabs button {
@@ -1013,7 +1015,7 @@ body {
   padding-left: var(--wb-space-8);
 }
 .wb-requests-table tr[aria-selected='true'] td {
-  background: var(--wb-cobalt-soft);
+  background: var(--wb-selected);
 }
 .wb .wb-requests-table tr[aria-selected='true'] button {
   color: var(--wb-cobalt);
@@ -1069,7 +1071,7 @@ body {
   white-space: nowrap;
 }
 .wb-badge[data-kind='request'] {
-  background: var(--wb-cobalt-soft);
+  background: var(--wb-track);
   color: var(--wb-cobalt);
 }
 .wb-badge[data-kind='tool'] {
@@ -1308,7 +1310,8 @@ body {
   background: var(--wb-hover);
 }
 .wb .wb-requests-events button[aria-pressed='true'] {
-  background: var(--wb-cobalt-soft);
+  background: var(--wb-selected);
+  color: var(--wb-cobalt);
 }
 .wb .wb-requests-events button:focus-visible {
   outline-offset: -2px;
